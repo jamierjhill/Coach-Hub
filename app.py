@@ -1,9 +1,9 @@
-# app.py - Unified Coaches Hub - Match Organizer & Invoice Management
+# app.py - Fixed Coaches Hub - Complete Invoice System
 from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_wtf import FlaskForm, CSRFProtect
 from wtforms import StringField, DecimalField, DateField, SelectField, TextAreaField, EmailField, PasswordField, IntegerField
-from wtforms.validators import DataRequired, Email, Length, NumberRange
+from wtforms.validators import DataRequired, Email, Length, NumberRange, Optional
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime, timedelta
 import secrets
@@ -15,6 +15,7 @@ import random
 from collections import defaultdict
 from functools import wraps
 import sqlalchemy as sa
+from decimal import Decimal
 
 # Import the match organizer utility
 from utils import organize_matches
@@ -81,6 +82,7 @@ class InvoiceTemplate(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
+    # Relationships
     invoices = db.relationship('Invoice', backref='template', lazy=True)
 
 class Invoice(db.Model):
@@ -89,26 +91,27 @@ class Invoice(db.Model):
     template_id = db.Column(db.Integer, db.ForeignKey('invoice_template.id'), nullable=True)
     invoice_number = db.Column(db.String(50), unique=True, nullable=False)
     student_name = db.Column(db.String(100), nullable=False)
-    student_email = db.Column(db.String(120))
+    student_email = db.Column(db.String(120), nullable=True)
     date_issued = db.Column(db.Date, nullable=False, default=datetime.utcnow().date())
     due_date = db.Column(db.Date, nullable=False)
     amount = db.Column(sa.Numeric(10, 2), nullable=False)
     description = db.Column(db.Text, nullable=False)
     status = db.Column(db.String(20), default='pending')  # pending, paid, overdue
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    paid_at = db.Column(db.DateTime)
+    paid_at = db.Column(db.DateTime, nullable=True)
     
     def generate_invoice_number(self, coach_id):
         """Generate unique invoice number"""
         today = datetime.now()
         prefix = f"CH-{coach_id}-{today.strftime('%Y%m')}"
         
+        # Get the highest existing number for this month
         existing = db.session.query(Invoice.invoice_number)\
             .filter(Invoice.invoice_number.like(f"{prefix}%"))\
             .order_by(Invoice.invoice_number.desc())\
             .first()
         
-        if existing:
+        if existing and existing[0]:
             try:
                 last_num = int(existing[0].split('-')[-1])
                 new_num = last_num + 1
@@ -118,6 +121,15 @@ class Invoice(db.Model):
             new_num = 1
         
         return f"{prefix}-{new_num:03d}"
+    
+    def update_status(self):
+        """Update invoice status based on due date and payment"""
+        if self.paid_at:
+            self.status = 'paid'
+        elif self.due_date < datetime.now().date():
+            self.status = 'overdue'
+        else:
+            self.status = 'pending'
 
 # Forms
 class LoginForm(FlaskForm):
@@ -131,7 +143,7 @@ class RegisterForm(FlaskForm):
 
 class InvoiceForm(FlaskForm):
     student_name = StringField('Student Name', validators=[DataRequired(), Length(min=2, max=100)])
-    student_email = EmailField('Student Email (Optional)', validators=[Email()])
+    student_email = EmailField('Student Email (Optional)', validators=[Optional(), Email()])
     amount = DecimalField('Amount (£)', validators=[DataRequired(), NumberRange(min=0.01, max=9999.99)])
     description = TextAreaField('Description', validators=[DataRequired(), Length(max=500)])
     due_date = DateField('Due Date', validators=[DataRequired()])
@@ -268,17 +280,20 @@ def process_csv_upload_secure(file, existing_players):
 def index():
     if 'coach_id' in session:
         return redirect(url_for('dashboard'))
-    return render_template('index.html')
+    return render_template('landing.html')
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     form = RegisterForm()
     
     if form.validate_on_submit():
-        if Coach.query.filter_by(email=form.email.data.lower()).first():
+        # Check if email already exists
+        existing_coach = Coach.query.filter_by(email=form.email.data.lower()).first()
+        if existing_coach:
             flash('Email already registered. Please use a different email.', 'error')
             return render_template('register.html', form=form)
         
+        # Create new coach
         coach = Coach(
             name=form.name.data.strip(),
             email=form.email.data.lower()
@@ -290,8 +305,9 @@ def register():
             db.session.commit()
             flash('Registration successful! Please log in.', 'success')
             return redirect(url_for('login'))
-        except Exception:
+        except Exception as e:
             db.session.rollback()
+            app.logger.error(f"Registration error: {str(e)}")
             flash('Registration failed. Please try again.', 'error')
     
     return render_template('register.html', form=form)
@@ -326,32 +342,53 @@ def logout():
 def dashboard():
     coach_id = session['coach_id']
     
-    # Mark overdue invoices
-    today = datetime.now().date()
-    Invoice.query.filter(
-        Invoice.coach_id == coach_id,
-        Invoice.status == 'pending',
-        Invoice.due_date < today
-    ).update({'status': 'overdue'})
-    db.session.commit()
-    
-    # Get invoice statistics
-    total_invoices = Invoice.query.filter_by(coach_id=coach_id).count()
-    pending_invoices = Invoice.query.filter_by(coach_id=coach_id, status='pending').count()
-    overdue_count = Invoice.query.filter_by(coach_id=coach_id, status='overdue').count()
-    total_pending_amount = db.session.query(db.func.sum(Invoice.amount))\
-        .filter_by(coach_id=coach_id, status='pending').scalar() or 0
-    
-    recent_invoices = Invoice.query.filter_by(coach_id=coach_id)\
-        .order_by(Invoice.created_at.desc())\
-        .limit(5).all()
-    
-    return render_template('dashboard.html',
-                         total_invoices=total_invoices,
-                         pending_invoices=pending_invoices,
-                         overdue_count=overdue_count,
-                         total_pending_amount=total_pending_amount,
-                         recent_invoices=recent_invoices)
+    try:
+        # Update invoice statuses first
+        today = datetime.now().date()
+        overdue_invoices = Invoice.query.filter(
+            Invoice.coach_id == coach_id,
+            Invoice.status == 'pending',
+            Invoice.due_date < today
+        ).all()
+        
+        for invoice in overdue_invoices:
+            invoice.status = 'overdue'
+        
+        if overdue_invoices:
+            db.session.commit()
+        
+        # Get invoice statistics
+        total_invoices = Invoice.query.filter_by(coach_id=coach_id).count()
+        pending_invoices = Invoice.query.filter_by(coach_id=coach_id, status='pending').count()
+        overdue_count = Invoice.query.filter_by(coach_id=coach_id, status='overdue').count()
+        
+        # Calculate total pending amount
+        pending_amount_result = db.session.query(db.func.sum(Invoice.amount))\
+            .filter(Invoice.coach_id == coach_id, Invoice.status.in_(['pending', 'overdue']))\
+            .scalar()
+        total_pending_amount = float(pending_amount_result) if pending_amount_result else 0
+        
+        # Get recent invoices
+        recent_invoices = Invoice.query.filter_by(coach_id=coach_id)\
+            .order_by(Invoice.created_at.desc())\
+            .limit(5).all()
+        
+        return render_template('dashboard.html',
+                             total_invoices=total_invoices,
+                             pending_invoices=pending_invoices,
+                             overdue_count=overdue_count,
+                             total_pending_amount=total_pending_amount,
+                             recent_invoices=recent_invoices)
+                             
+    except Exception as e:
+        app.logger.error(f"Dashboard error: {str(e)}")
+        flash('Error loading dashboard. Please try again.', 'error')
+        return render_template('dashboard.html',
+                             total_invoices=0,
+                             pending_invoices=0,
+                             overdue_count=0,
+                             total_pending_amount=0,
+                             recent_invoices=[])
 
 # Match Organizer Routes
 @app.route('/match-organizer', methods=['GET', 'POST'])
@@ -498,6 +535,7 @@ def match_organizer():
                     flash('Matches organized successfully!', 'success')
                         
                 except Exception as e:
+                    app.logger.error(f"Match organization error: {str(e)}")
                     error = "Error organizing matches. Please try again."
         
         # Save updated session data
@@ -513,109 +551,153 @@ def match_organizer():
                          rounds=match_data["rounds"],
                          error=error)
 
-# Invoice Management Routes (CoachPay)
+# Invoice Management Routes
 @app.route('/invoices')
 @login_required
 def invoices():
     coach_id = session['coach_id']
     status_filter = request.args.get('status', 'all')
     
-    # Mark overdue invoices
-    today = datetime.now().date()
-    Invoice.query.filter(
-        Invoice.coach_id == coach_id,
-        Invoice.status == 'pending',
-        Invoice.due_date < today
-    ).update({'status': 'overdue'})
-    db.session.commit()
-    
-    query = Invoice.query.filter_by(coach_id=coach_id)
-    
-    if status_filter != 'all':
-        query = query.filter_by(status=status_filter)
-    
-    invoices = query.order_by(Invoice.created_at.desc()).all()
-    csrf_form = CSRFForm()
-    
-    return render_template('invoices.html', 
-                         invoices=invoices, 
-                         status_filter=status_filter,
-                         csrf_form=csrf_form)
+    try:
+        # Mark overdue invoices
+        today = datetime.now().date()
+        overdue_invoices = Invoice.query.filter(
+            Invoice.coach_id == coach_id,
+            Invoice.status == 'pending',
+            Invoice.due_date < today
+        ).all()
+        
+        for invoice in overdue_invoices:
+            invoice.status = 'overdue'
+        
+        if overdue_invoices:
+            db.session.commit()
+        
+        # Build query
+        query = Invoice.query.filter_by(coach_id=coach_id)
+        
+        if status_filter != 'all':
+            query = query.filter_by(status=status_filter)
+        
+        invoices = query.order_by(Invoice.created_at.desc()).all()
+        csrf_form = CSRFForm()
+        
+        return render_template('invoices.html', 
+                             invoices=invoices, 
+                             status_filter=status_filter,
+                             csrf_form=csrf_form)
+                             
+    except Exception as e:
+        app.logger.error(f"Invoices page error: {str(e)}")
+        flash('Error loading invoices. Please try again.', 'error')
+        return render_template('invoices.html', 
+                             invoices=[], 
+                             status_filter=status_filter,
+                             csrf_form=CSRFForm())
 
 @app.route('/view-invoice/<int:invoice_id>')
 @login_required
 def view_invoice(invoice_id):
-    invoice = Invoice.query.filter_by(
-        id=invoice_id, 
-        coach_id=session['coach_id']
-    ).first_or_404()
-    
-    csrf_form = CSRFForm()
-    return render_template('view_invoice.html', invoice=invoice, csrf_form=csrf_form)
+    try:
+        invoice = Invoice.query.filter_by(
+            id=invoice_id, 
+            coach_id=session['coach_id']
+        ).first()
+        
+        if not invoice:
+            flash('Invoice not found.', 'error')
+            return redirect(url_for('invoices'))
+        
+        # Update status if needed
+        invoice.update_status()
+        db.session.commit()
+        
+        csrf_form = CSRFForm()
+        return render_template('view_invoice.html', invoice=invoice, csrf_form=csrf_form)
+        
+    except Exception as e:
+        app.logger.error(f"View invoice error: {str(e)}")
+        flash('Error loading invoice. Please try again.', 'error')
+        return redirect(url_for('invoices'))
 
 @app.route('/create-invoice', methods=['GET', 'POST'])
 @login_required
 def create_invoice():
     form = InvoiceForm()
-    templates = InvoiceTemplate.query.filter_by(coach_id=session['coach_id'])\
-        .order_by(InvoiceTemplate.name.asc()).all()
     
-    if form.validate_on_submit():
-        invoice = Invoice(
-            coach_id=session['coach_id'],
-            student_name=form.student_name.data.strip(),
-            student_email=form.student_email.data.lower() if form.student_email.data else None,
-            amount=form.amount.data,
-            description=form.description.data.strip(),
-            due_date=form.due_date.data
-        )
+    try:
+        templates = InvoiceTemplate.query.filter_by(coach_id=session['coach_id'])\
+            .order_by(InvoiceTemplate.name.asc()).all()
         
-        invoice.invoice_number = invoice.generate_invoice_number(session['coach_id'])
+        if form.validate_on_submit():
+            invoice = Invoice(
+                coach_id=session['coach_id'],
+                student_name=form.student_name.data.strip(),
+                student_email=form.student_email.data.lower() if form.student_email.data else None,
+                amount=form.amount.data,
+                description=form.description.data.strip(),
+                due_date=form.due_date.data
+            )
+            
+            invoice.invoice_number = invoice.generate_invoice_number(session['coach_id'])
+            
+            try:
+                db.session.add(invoice)
+                db.session.commit()
+                flash('Invoice created successfully!', 'success')
+                return redirect(url_for('view_invoice', invoice_id=invoice.id))
+            except Exception as e:
+                db.session.rollback()
+                app.logger.error(f"Create invoice error: {str(e)}")
+                flash('Failed to create invoice. Please try again.', 'error')
         
-        try:
-            db.session.add(invoice)
-            db.session.commit()
-            flash('Invoice created successfully!', 'success')
-            return redirect(url_for('view_invoice', invoice_id=invoice.id))
-        except Exception:
-            db.session.rollback()
-            flash('Failed to create invoice. Please try again.', 'error')
-    
-    return render_template('create_invoice.html', form=form, templates=templates)
+        return render_template('create_invoice.html', form=form, templates=templates)
+        
+    except Exception as e:
+        app.logger.error(f"Create invoice page error: {str(e)}")
+        flash('Error loading create invoice page.', 'error')
+        return redirect(url_for('invoices'))
 
 @app.route('/edit-invoice/<int:invoice_id>', methods=['GET', 'POST'])
 @login_required
 def edit_invoice(invoice_id):
-    invoice = Invoice.query.filter_by(
-        id=invoice_id, 
-        coach_id=session['coach_id']
-    ).first_or_404()
-    
-    form = InvoiceForm(obj=invoice)
-    
-    if form.validate_on_submit():
-        invoice.student_name = form.student_name.data.strip()
-        invoice.student_email = form.student_email.data.lower() if form.student_email.data else None
-        invoice.amount = form.amount.data
-        invoice.description = form.description.data.strip()
-        invoice.due_date = form.due_date.data
+    try:
+        invoice = Invoice.query.filter_by(
+            id=invoice_id, 
+            coach_id=session['coach_id']
+        ).first()
         
-        # Update status based on new due date
-        today = datetime.now().date()
-        if invoice.status == 'pending' and invoice.due_date < today:
-            invoice.status = 'overdue'
-        elif invoice.status == 'overdue' and invoice.due_date >= today:
-            invoice.status = 'pending'
+        if not invoice:
+            flash('Invoice not found.', 'error')
+            return redirect(url_for('invoices'))
         
-        try:
-            db.session.commit()
-            flash('Invoice updated successfully!', 'success')
-            return redirect(url_for('view_invoice', invoice_id=invoice.id))
-        except Exception:
-            db.session.rollback()
-            flash('Failed to update invoice. Please try again.', 'error')
-    
-    return render_template('edit_invoice.html', form=form, invoice=invoice)
+        form = InvoiceForm(obj=invoice)
+        
+        if form.validate_on_submit():
+            invoice.student_name = form.student_name.data.strip()
+            invoice.student_email = form.student_email.data.lower() if form.student_email.data else None
+            invoice.amount = form.amount.data
+            invoice.description = form.description.data.strip()
+            invoice.due_date = form.due_date.data
+            
+            # Update status based on new due date
+            invoice.update_status()
+            
+            try:
+                db.session.commit()
+                flash('Invoice updated successfully!', 'success')
+                return redirect(url_for('view_invoice', invoice_id=invoice.id))
+            except Exception as e:
+                db.session.rollback()
+                app.logger.error(f"Edit invoice error: {str(e)}")
+                flash('Failed to update invoice. Please try again.', 'error')
+        
+        return render_template('edit_invoice.html', form=form, invoice=invoice)
+        
+    except Exception as e:
+        app.logger.error(f"Edit invoice page error: {str(e)}")
+        flash('Error loading edit invoice page.', 'error')
+        return redirect(url_for('invoices'))
 
 @app.route('/mark-paid/<int:invoice_id>', methods=['POST'])
 @login_required
@@ -625,23 +707,34 @@ def mark_paid(invoice_id):
         flash('Security token expired. Please try again.', 'error')
         return redirect(url_for('invoices'))
     
-    invoice = Invoice.query.filter_by(
-        id=invoice_id, 
-        coach_id=session['coach_id']
-    ).first_or_404()
-    
-    if invoice.status != 'paid':
-        invoice.status = 'paid'
-        invoice.paid_at = datetime.utcnow()
+    try:
+        invoice = Invoice.query.filter_by(
+            id=invoice_id, 
+            coach_id=session['coach_id']
+        ).first()
         
-        try:
-            db.session.commit()
-            flash(f'Invoice {invoice.invoice_number} marked as paid!', 'success')
-        except Exception:
-            db.session.rollback()
-            flash('Failed to update invoice. Please try again.', 'error')
-    
-    return redirect(request.referrer or url_for('invoices'))
+        if not invoice:
+            flash('Invoice not found.', 'error')
+            return redirect(url_for('invoices'))
+        
+        if invoice.status != 'paid':
+            invoice.status = 'paid'
+            invoice.paid_at = datetime.utcnow()
+            
+            try:
+                db.session.commit()
+                flash(f'Invoice {invoice.invoice_number} marked as paid!', 'success')
+            except Exception as e:
+                db.session.rollback()
+                app.logger.error(f"Mark paid error: {str(e)}")
+                flash('Failed to update invoice. Please try again.', 'error')
+        
+        return redirect(request.referrer or url_for('invoices'))
+        
+    except Exception as e:
+        app.logger.error(f"Mark paid error: {str(e)}")
+        flash('Error updating invoice. Please try again.', 'error')
+        return redirect(url_for('invoices'))
 
 @app.route('/delete-invoice/<int:invoice_id>', methods=['POST'])
 @login_required
@@ -651,33 +744,87 @@ def delete_invoice(invoice_id):
         flash('Security token expired. Please try again.', 'error')
         return redirect(url_for('invoices'))
     
-    invoice = Invoice.query.filter_by(
-        id=invoice_id, 
-        coach_id=session['coach_id']
-    ).first_or_404()
-    
-    invoice_number = invoice.invoice_number
-    
     try:
-        db.session.delete(invoice)
-        db.session.commit()
-        flash(f'Invoice {invoice_number} has been deleted.', 'success')
-    except Exception:
-        db.session.rollback()
-        flash('Failed to delete invoice. Please try again.', 'error')
-    
-    return redirect(url_for('invoices'))
+        invoice = Invoice.query.filter_by(
+            id=invoice_id, 
+            coach_id=session['coach_id']
+        ).first()
+        
+        if not invoice:
+            flash('Invoice not found.', 'error')
+            return redirect(url_for('invoices'))
+        
+        invoice_number = invoice.invoice_number
+        
+        try:
+            db.session.delete(invoice)
+            db.session.commit()
+            flash(f'Invoice {invoice_number} has been deleted.', 'success')
+        except Exception as e:
+            db.session.rollback()
+            app.logger.error(f"Delete invoice error: {str(e)}")
+            flash('Failed to delete invoice. Please try again.', 'error')
+        
+        return redirect(url_for('invoices'))
+        
+    except Exception as e:
+        app.logger.error(f"Delete invoice error: {str(e)}")
+        flash('Error deleting invoice. Please try again.', 'error')
+        return redirect(url_for('invoices'))
 
-# Templates Routes
+@app.route('/repeat-invoice/<int:invoice_id>')
+@login_required
+def repeat_invoice(invoice_id):
+    try:
+        original_invoice = Invoice.query.filter_by(
+            id=invoice_id, 
+            coach_id=session['coach_id']
+        ).first()
+        
+        if not original_invoice:
+            flash('Original invoice not found.', 'error')
+            return redirect(url_for('invoices'))
+        
+        # Create form with original invoice data
+        form = InvoiceForm()
+        form.student_name.data = original_invoice.student_name
+        form.student_email.data = original_invoice.student_email
+        form.amount.data = original_invoice.amount
+        form.description.data = original_invoice.description
+        
+        # Set due date to 14 days from today (or use template default if available)
+        default_days = 14
+        if original_invoice.template:
+            default_days = original_invoice.template.default_due_days
+        form.due_date.data = datetime.now().date() + timedelta(days=default_days)
+        
+        templates = InvoiceTemplate.query.filter_by(coach_id=session['coach_id'])\
+            .order_by(InvoiceTemplate.name.asc()).all()
+        
+        flash(f'Creating new invoice based on {original_invoice.invoice_number}', 'info')
+        return render_template('create_invoice.html', form=form, templates=templates)
+        
+    except Exception as e:
+        app.logger.error(f"Repeat invoice error: {str(e)}")
+        flash('Error creating repeat invoice. Please try again.', 'error')
+        return redirect(url_for('invoices'))
+
+# Template Management Routes
 @app.route('/templates')
 @login_required
 def templates():
-    coach_id = session['coach_id']
-    templates = InvoiceTemplate.query.filter_by(coach_id=coach_id)\
-        .order_by(InvoiceTemplate.name.asc()).all()
-    
-    csrf_form = CSRFForm()
-    return render_template('templates.html', templates=templates, csrf_form=csrf_form)
+    try:
+        coach_id = session['coach_id']
+        templates = InvoiceTemplate.query.filter_by(coach_id=coach_id)\
+            .order_by(InvoiceTemplate.name.asc()).all()
+        
+        csrf_form = CSRFForm()
+        return render_template('templates.html', templates=templates, csrf_form=csrf_form)
+        
+    except Exception as e:
+        app.logger.error(f"Templates page error: {str(e)}")
+        flash('Error loading templates. Please try again.', 'error')
+        return render_template('templates.html', templates=[], csrf_form=CSRFForm())
 
 @app.route('/create-template', methods=['GET', 'POST'])
 @login_required
@@ -685,42 +832,200 @@ def create_template():
     form = TemplateForm()
     
     if form.validate_on_submit():
-        template = InvoiceTemplate(
-            coach_id=session['coach_id'],
-            name=form.name.data.strip(),
-            amount=form.amount.data,
-            description=form.description.data.strip(),
-            default_due_days=form.default_due_days.data
-        )
-        
         try:
+            template = InvoiceTemplate(
+                coach_id=session['coach_id'],
+                name=form.name.data.strip(),
+                amount=form.amount.data,
+                description=form.description.data.strip(),
+                default_due_days=form.default_due_days.data
+            )
+            
             db.session.add(template)
             db.session.commit()
             flash('Template created successfully!', 'success')
             return redirect(url_for('templates'))
-        except Exception:
+            
+        except Exception as e:
             db.session.rollback()
+            app.logger.error(f"Create template error: {str(e)}")
             flash('Failed to create template. Please try again.', 'error')
     
     return render_template('create_template.html', form=form)
 
+@app.route('/edit-template/<int:template_id>', methods=['GET', 'POST'])
+@login_required
+def edit_template(template_id):
+    try:
+        template = InvoiceTemplate.query.filter_by(
+            id=template_id, 
+            coach_id=session['coach_id']
+        ).first()
+        
+        if not template:
+            flash('Template not found.', 'error')
+            return redirect(url_for('templates'))
+        
+        form = TemplateForm(obj=template)
+        
+        if form.validate_on_submit():
+            template.name = form.name.data.strip()
+            template.amount = form.amount.data
+            template.description = form.description.data.strip()
+            template.default_due_days = form.default_due_days.data
+            template.updated_at = datetime.utcnow()
+            
+            try:
+                db.session.commit()
+                flash('Template updated successfully!', 'success')
+                return redirect(url_for('templates'))
+            except Exception as e:
+                db.session.rollback()
+                app.logger.error(f"Edit template error: {str(e)}")
+                flash('Failed to update template. Please try again.', 'error')
+        
+        return render_template('edit_template.html', form=form, template=template)
+        
+    except Exception as e:
+        app.logger.error(f"Edit template page error: {str(e)}")
+        flash('Error loading edit template page.', 'error')
+        return redirect(url_for('templates'))
+
+@app.route('/delete-template/<int:template_id>', methods=['POST'])
+@login_required
+def delete_template(template_id):
+    csrf_form = CSRFForm()
+    if not csrf_form.validate_on_submit():
+        flash('Security token expired. Please try again.', 'error')
+        return redirect(url_for('templates'))
+    
+    try:
+        template = InvoiceTemplate.query.filter_by(
+            id=template_id, 
+            coach_id=session['coach_id']
+        ).first()
+        
+        if not template:
+            flash('Template not found.', 'error')
+            return redirect(url_for('templates'))
+        
+        template_name = template.name
+        
+        try:
+            db.session.delete(template)
+            db.session.commit()
+            flash(f'Template "{template_name}" has been deleted.', 'success')
+        except Exception as e:
+            db.session.rollback()
+            app.logger.error(f"Delete template error: {str(e)}")
+            flash('Failed to delete template. Please try again.', 'error')
+        
+        return redirect(url_for('templates'))
+        
+    except Exception as e:
+        app.logger.error(f"Delete template error: {str(e)}")
+        flash('Error deleting template. Please try again.', 'error')
+        return redirect(url_for('templates'))
+
+@app.route('/use-template/<int:template_id>')
+@login_required
+def use_template(template_id):
+    try:
+        template = InvoiceTemplate.query.filter_by(
+            id=template_id, 
+            coach_id=session['coach_id']
+        ).first()
+        
+        if not template:
+            flash('Template not found.', 'error')
+            return redirect(url_for('templates'))
+        
+        return redirect(url_for('create_invoice_from_template', template_id=template.id))
+        
+    except Exception as e:
+        app.logger.error(f"Use template error: {str(e)}")
+        flash('Error using template. Please try again.', 'error')
+        return redirect(url_for('templates'))
+
+@app.route('/create-invoice-from-template/<int:template_id>', methods=['GET', 'POST'])
+@login_required
+def create_invoice_from_template(template_id):
+    try:
+        template = InvoiceTemplate.query.filter_by(
+            id=template_id, 
+            coach_id=session['coach_id']
+        ).first()
+        
+        if not template:
+            flash('Template not found.', 'error')
+            return redirect(url_for('templates'))
+        
+        form = InvoiceForm()
+        
+        # Pre-populate form with template data
+        if request.method == 'GET':
+            form.amount.data = template.amount
+            form.description.data = template.description
+            form.due_date.data = datetime.now().date() + timedelta(days=template.default_due_days)
+        
+        if form.validate_on_submit():
+            invoice = Invoice(
+                coach_id=session['coach_id'],
+                template_id=template.id,
+                student_name=form.student_name.data.strip(),
+                student_email=form.student_email.data.lower() if form.student_email.data else None,
+                amount=form.amount.data,
+                description=form.description.data.strip(),
+                due_date=form.due_date.data
+            )
+            
+            invoice.invoice_number = invoice.generate_invoice_number(session['coach_id'])
+            
+            try:
+                db.session.add(invoice)
+                db.session.commit()
+                flash('Invoice created successfully from template!', 'success')
+                return redirect(url_for('view_invoice', invoice_id=invoice.id))
+            except Exception as e:
+                db.session.rollback()
+                app.logger.error(f"Create invoice from template error: {str(e)}")
+                flash('Failed to create invoice. Please try again.', 'error')
+        
+        templates = InvoiceTemplate.query.filter_by(coach_id=session['coach_id'])\
+            .order_by(InvoiceTemplate.name.asc()).all()
+        
+        return render_template('create_invoice.html', form=form, template=template, templates=templates)
+        
+    except Exception as e:
+        app.logger.error(f"Create invoice from template error: {str(e)}")
+        flash('Error creating invoice from template.', 'error')
+        return redirect(url_for('templates'))
+
 # Error handlers
 @app.errorhandler(400)
 def bad_request(error):
-    return render_template('error.html', error_code=400, error_message="Bad Request"), 400
+    return render_template('error.html', 
+                         title="Bad Request", 
+                         message="The request could not be understood by the server."), 400
 
 @app.errorhandler(404)
 def not_found(error):
-    return render_template('error.html', error_code=404, error_message="Page Not Found"), 404
+    return render_template('error.html', 
+                         title="Page Not Found", 
+                         message="The page you are looking for could not be found."), 404
 
 @app.errorhandler(413)
 def payload_too_large(error):
-    return render_template('error.html', error_code=413, error_message="File Too Large"), 413
+    return render_template('error.html', 
+                         title="File Too Large", 
+                         message="The uploaded file is too large."), 413
 
 @app.errorhandler(500)
 def server_error(error):
     db.session.rollback()
-    return render_template('error.html', error_code=500, error_message="Internal Server Error"), 500
+    return render_template('error.html', 
+                         title="Server Error", 
+                         message="An internal server error occurred."), 500
 
 # Security headers
 @app.after_request
@@ -741,8 +1046,46 @@ def after_request(response):
 
 # Database initialization
 def create_tables():
+    """Create database tables and handle any schema migrations safely"""
     with app.app_context():
-        db.create_all()
+        try:
+            # Create all tables
+            db.create_all()
+            
+            # Verify critical tables exist
+            inspector = sa.inspect(db.engine)
+            required_tables = ['coach', 'invoice', 'invoice_template']
+            existing_tables = inspector.get_table_names()
+            
+            missing_tables = [table for table in required_tables if table not in existing_tables]
+            if missing_tables:
+                app.logger.error(f"Missing database tables: {missing_tables}")
+                raise Exception(f"Database initialization failed. Missing tables: {missing_tables}")
+            
+            app.logger.info("Database tables verified successfully")
+            
+        except Exception as e:
+            app.logger.error(f"Database initialization error: {str(e)}")
+            raise
+
+# Health check endpoint
+@app.route('/health')
+def health_check():
+    """Health check endpoint for monitoring"""
+    try:
+        # Test database connection
+        db.session.execute(sa.text('SELECT 1'))
+        return jsonify({
+            'status': 'healthy', 
+            'timestamp': datetime.utcnow().isoformat(),
+            'version': '1.0.0'
+        }), 200
+    except Exception as e:
+        return jsonify({
+            'status': 'unhealthy', 
+            'error': str(e),
+            'timestamp': datetime.utcnow().isoformat()
+        }), 500
 
 if __name__ == '__main__':
     create_tables()

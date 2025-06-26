@@ -1,0 +1,127 @@
+<!-- templates/create_template.html -->
+{% extends "base.html" %}
+{% block title %}Create Template{% endblock %}
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h2 class="fw-bold"><i class="bi bi-plus-circle"></i> Create Invoice Template</h2>
+        <p class="text-muted">Create a reusable template for common coaching services</p>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8 mx-auto">
+        <div class="card">
+            <div class="card-body">
+                <form method="POST">
+                    {{ form.hidden_tag() }}
+                    
+                    <div class="mb-3">
+                        {{ form.name.label(class="form-label") }}
+                        {{ form.name(class="form-control", placeholder="e.g., 1 Hour Tennis Lesson") }}
+                        <div class="form-text">Give your template a descriptive name</div>
+                        {% if form.name.errors %}
+                            <div class="text-danger small">
+                                {% for error in form.name.errors %}{{ error }}{% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            {{ form.amount.label(class="form-label") }}
+                            <div class="input-group">
+                                <span class="input-group-text">£</span>
+                                {{ form.amount(class="form-control", step="0.01", placeholder="55.00") }}
+                            </div>
+                            {% if form.amount.errors %}
+                                <div class="text-danger small">
+                                    {% for error in form.amount.errors %}{{ error }}{% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            {{ form.default_due_days.label(class="form-label") }}
+                            {{ form.default_due_days(class="form-control", placeholder="14") }}
+                            <div class="form-text">Days from invoice creation to due date</div>
+                            {% if form.default_due_days.errors %}
+                                <div class="text-danger small">
+                                    {% for error in form.default_due_days.errors %}{{ error }}{% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        {{ form.description.label(class="form-label") }}
+                        {{ form.description(class="form-control", rows="6", placeholder="Tennis coaching session - 1 hour\n\nPayment Details:\nBank: Your Bank Name\nAccount: 12345678\nSort Code: 12-34-56\nReference: [Student Name]") }}
+                        <div class="form-text">Include service details and payment instructions</div>
+                        {% if form.description.errors %}
+                            <div class="text-danger small">
+                                {% for error in form.description.errors %}{{ error }}{% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="mb-4">
+                        <h6>Common Due Date Options:</h6>
+                        <div class="d-flex gap-2 flex-wrap">
+                            <button type="button" class="btn btn-outline-primary btn-sm" onclick="setDueDays(7)">
+                                7 Days
+                            </button>
+                            <button type="button" class="btn btn-outline-primary btn-sm" onclick="setDueDays(14)">
+                                14 Days
+                            </button>
+                            <button type="button" class="btn btn-outline-primary btn-sm" onclick="setDueDays(30)">
+                                30 Days
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-file-text"></i> Create Template
+                        </button>
+                        <a href="{{ url_for('templates') }}" class="btn btn-outline-secondary">
+                            Cancel
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-lg-8 mx-auto">
+        <div class="card bg-light">
+            <div class="card-body">
+                <h6><i class="bi bi-lightbulb text-warning"></i> Template Best Practices</h6>
+                <ul class="mb-0 small">
+                    <li><strong>Include payment details:</strong> Add your bank details, PayPal, or other payment methods</li>
+                    <li><strong>Be specific:</strong> "1 Hour Tennis Lesson" is better than just "Lesson"</li>
+                    <li><strong>Set realistic due dates:</strong> 14-30 days gives students time to pay</li>
+                    <li><strong>Use references:</strong> Ask students to use their name as payment reference</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function setDueDays(days) {
+    document.querySelector('input[name="default_due_days"]').value = days;
+}
+
+// Set default due days to 14
+document.addEventListener('DOMContentLoaded', function() {
+    const dueDaysInput = document.querySelector('input[name="default_due_days"]');
+    if (!dueDaysInput.value) {
+        setDueDays(14);
+    }
+});
+</script>
+{% endblock %}

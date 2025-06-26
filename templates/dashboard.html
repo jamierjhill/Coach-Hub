@@ -1,0 +1,354 @@
+{% extends "base.html" %}
+{% block title %}Dashboard - Coaches Hub{% endblock %}
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h2 class="fw-bold">Welcome back, {{ session['coach_name'] }}! 👋</h2>
+        <p class="text-muted">Your coaching dashboard - manage everything from one place.</p>
+    </div>
+</div>
+
+<!-- Quick Action Cards -->
+<div class="row mb-4 g-3">
+    <div class="col-md-6">
+        <div class="card feature-card border-primary" onclick="window.location.href='{{ url_for('invoices') }}'">
+            <div class="card-body text-center p-4">
+                <div class="feature-icon">
+                    <i class="bi bi-receipt-cutoff"></i>
+                </div>
+                <h4 class="text-primary mb-3">Invoice Management</h4>
+                <p class="text-muted mb-3">Track payments, create professional invoices, and manage your coaching finances</p>
+                <div class="d-flex justify-content-around text-center">
+                    <div>
+                        <h5 class="text-primary mb-0">{{ total_invoices }}</h5>
+                        <small class="text-muted">Total</small>
+                    </div>
+                    <div>
+                        <h5 class="text-warning mb-0">{{ pending_invoices }}</h5>
+                        <small class="text-muted">Pending</small>
+                    </div>
+                    <div>
+                        <h5 class="text-danger mb-0">{{ overdue_count }}</h5>
+                        <small class="text-muted">Overdue</small>
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <span class="btn btn-primary">
+                        <i class="bi bi-arrow-right"></i> Manage Invoices
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card feature-card border-success" onclick="window.location.href='{{ url_for('match_organizer') }}'">
+            <div class="card-body text-center p-4">
+                <div class="feature-icon bg-success">
+                    <i class="bi bi-diagram-3"></i>
+                </div>
+                <h4 class="text-success mb-3">Match Organizer</h4>
+                <p class="text-muted mb-3">Organize fair tennis matches automatically with our smart algorithm</p>
+                <div class="d-flex justify-content-around text-center">
+                    <div>
+                        <h5 class="text-success mb-0">🎾</h5>
+                        <small class="text-muted">Singles</small>
+                    </div>
+                    <div>
+                        <h5 class="text-success mb-0">🏟️</h5>
+                        <small class="text-muted">Doubles</small>
+                    </div>
+                    <div>
+                        <h5 class="text-success mb-0">⚖️</h5>
+                        <small class="text-muted">Balanced</small>
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <span class="btn btn-success">
+                        <i class="bi bi-arrow-right"></i> Organize Matches
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Activity & Quick Stats -->
+<div class="row">
+    <div class="col-lg-8 mb-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5><i class="bi bi-clock-history"></i> Recent Invoices</h5>
+                    <a href="{{ url_for('invoices') }}" class="btn btn-sm btn-outline-primary">View All</a>
+                </div>
+                
+                {% if recent_invoices %}
+                <!-- Desktop Table View -->
+                <div class="d-none d-md-block">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Invoice #</th>
+                                    <th>Student</th>
+                                    <th>Amount</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for invoice in recent_invoices %}
+                                <tr onclick="window.location='{{ url_for('view_invoice', invoice_id=invoice.id) }}'" style="cursor: pointer;">
+                                    <td><strong>{{ invoice.invoice_number }}</strong></td>
+                                    <td>{{ invoice.student_name }}</td>
+                                    <td><strong>£{{ "%.2f"|format(invoice.amount) }}</strong></td>
+                                    <td>
+                                        {% if invoice.status == 'paid' %}
+                                            <span class="badge bg-success">Paid</span>
+                                        {% elif invoice.status == 'overdue' %}
+                                            <span class="badge bg-danger">Overdue</span>
+                                        {% else %}
+                                            <span class="badge bg-warning text-dark">Pending</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <!-- Mobile List View -->
+                <div class="d-md-none">
+                    {% for invoice in recent_invoices %}
+                    <div class="border rounded p-3 mb-2" onclick="window.location='{{ url_for('view_invoice', invoice_id=invoice.id) }}'" style="cursor: pointer;">
+                        <div class="d-flex justify-content-between align-items-start mb-1">
+                            <h6 class="mb-0"><strong>{{ invoice.invoice_number }}</strong></h6>
+                            {% if invoice.status == 'paid' %}
+                                <span class="badge bg-success">Paid</span>
+                            {% elif invoice.status == 'overdue' %}
+                                <span class="badge bg-danger">Overdue</span>
+                            {% else %}
+                                <span class="badge bg-warning text-dark">Pending</span>
+                            {% endif %}
+                        </div>
+                        <div class="text-muted small">{{ invoice.student_name }}</div>
+                        <div class="text-success fw-bold">£{{ "%.2f"|format(invoice.amount) }}</div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center py-4">
+                    <i class="bi bi-receipt display-4 text-muted"></i>
+                    <h5 class="text-muted mt-3">No invoices yet</h5>
+                    <p class="text-muted">Create your first invoice to start tracking payments</p>
+                    <a href="{{ url_for('create_invoice') }}" class="btn btn-primary">
+                        <i class="bi bi-plus-circle me-2"></i>Create First Invoice
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5><i class="bi bi-lightning"></i> Quick Actions</h5>
+                <div class="d-grid gap-2">
+                    <a href="{{ url_for('create_invoice') }}" class="btn btn-primary">
+                        <i class="bi bi-plus-circle"></i> New Invoice
+                    </a>
+                    <a href="{{ url_for('match_organizer') }}" class="btn btn-outline-success">
+                        <i class="bi bi-diagram-3"></i> Organize Matches
+                    </a>
+                    <a href="{{ url_for('templates') }}" class="btn btn-outline-secondary">
+                        <i class="bi bi-file-text"></i> Manage Templates
+                    </a>
+                    {% if pending_invoices > 0 %}
+                    <a href="{{ url_for('invoices', status='pending') }}" class="btn btn-outline-warning">
+                        <i class="bi bi-clock"></i> View Pending ({{ pending_invoices }})
+                    </a>
+                    {% endif %}
+                    {% if overdue_count > 0 %}
+                    <a href="{{ url_for('invoices', status='overdue') }}" class="btn btn-outline-danger">
+                        <i class="bi bi-exclamation-triangle"></i> View Overdue ({{ overdue_count }})
+                    </a>
+                    {% endif %}
+                </div>
+                
+                <!-- Financial Summary -->
+                {% if total_invoices > 0 %}
+                <div class="mt-4 p-3 bg-light rounded">
+                    <h6 class="fw-bold"><i class="bi bi-graph-up"></i> Financial Summary</h6>
+                    <div class="row text-center">
+                        <div class="col-6">
+                            <div class="border-end">
+                                <h6 class="text-success mb-1">£{{ "%.0f"|format(total_pending_amount) }}</h6>
+                                <small class="text-muted">Pending</small>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <h6 class="text-primary mb-1">{{ total_invoices }}</h6>
+                            <small class="text-muted">Total Invoices</small>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+                
+                <!-- Mobile-specific quick tips -->
+                <div class="mt-4 d-lg-none">
+                    <div class="alert alert-info">
+                        <small>
+                            <i class="bi bi-lightbulb"></i> <strong>Tip:</strong> 
+                            Tap the cards above to quickly access your most-used features.
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Getting Started Guide (only show if no invoices) -->
+{% if total_invoices == 0 %}
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card border-primary">
+            <div class="card-body">
+                <h5 class="text-primary"><i class="bi bi-rocket"></i> Getting Started</h5>
+                <p class="text-muted mb-3">Welcome to Coaches Hub! Here's how to get the most out of your coaching tools:</p>
+                
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <div class="d-flex">
+                            <div class="me-3">
+                                <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                                    <span class="fw-bold">1</span>
+                                </div>
+                            </div>
+                            <div>
+                                <h6 class="mb-1">Create Invoice Templates</h6>
+                                <small class="text-muted">Set up templates for your common lessons to speed up invoice creation</small>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6 mb-3">
+                        <div class="d-flex">
+                            <div class="me-3">
+                                <div class="bg-success text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                                    <span class="fw-bold">2</span>
+                                </div>
+                            </div>
+                            <div>
+                                <h6 class="mb-1">Start Creating Invoices</h6>
+                                <small class="text-muted">Generate professional invoices for your students with automatic tracking</small>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6 mb-3">
+                        <div class="d-flex">
+                            <div class="me-3">
+                                <div class="bg-warning text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                                    <span class="fw-bold">3</span>
+                                </div>
+                            </div>
+                            <div>
+                                <h6 class="mb-1">Organize Matches</h6>
+                                <small class="text-muted">Use our smart algorithm to create balanced tennis matches for your sessions</small>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6 mb-3">
+                        <div class="d-flex">
+                            <div class="me-3">
+                                <div class="bg-info text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                                    <span class="fw-bold">4</span>
+                                </div>
+                            </div>
+                            <div>
+                                <h6 class="mb-1">Track Everything</h6>
+                                <small class="text-muted">Monitor payments and keep your coaching business organized</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="text-center mt-3">
+                    <a href="{{ url_for('create_template') }}" class="btn btn-primary me-2">
+                        <i class="bi bi-file-text"></i> Create Template
+                    </a>
+                    <a href="{{ url_for('create_invoice') }}" class="btn btn-outline-primary">
+                        <i class="bi bi-plus-circle"></i> Create Invoice
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Mobile FAB (Floating Action Button) -->
+<div class="d-lg-none">
+    <div class="position-fixed" style="bottom: 20px; right: 20px; z-index: 1000;">
+        <div class="btn-group-vertical">
+            <a href="{{ url_for('create_invoice') }}" class="btn btn-primary rounded-circle mb-2" 
+               style="width: 60px; height: 60px; box-shadow: 0 4px 12px rgba(0,0,0,0.3);"
+               title="Create New Invoice">
+                <i class="bi bi-plus-lg" style="font-size: 1.5rem;"></i>
+            </a>
+            <a href="{{ url_for('match_organizer') }}" class="btn btn-success rounded-circle" 
+               style="width: 60px; height: 60px; box-shadow: 0 4px 12px rgba(0,0,0,0.3);"
+               title="Organize Matches">
+                <i class="bi bi-diagram-3" style="font-size: 1.5rem;"></i>
+            </a>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Add touch feedback for clickable cards
+    const clickableCards = document.querySelectorAll('.feature-card');
+    clickableCards.forEach(card => {
+        card.addEventListener('touchstart', function() {
+            this.style.transform = 'scale(0.98)';
+        });
+        
+        card.addEventListener('touchend', function() {
+            setTimeout(() => {
+                this.style.transform = '';
+            }, 150);
+        });
+    });
+    
+    // Add subtle animation to cards on load
+    const cards = document.querySelectorAll('.card');
+    cards.forEach((card, index) => {
+        card.style.opacity = '0';
+        card.style.transform = 'translateY(20px)';
+        setTimeout(() => {
+            card.style.transition = 'all 0.3s ease';
+            card.style.opacity = '1';
+            card.style.transform = 'translateY(0)';
+        }, index * 100);
+    });
+    
+    // Add haptic feedback for mobile interactions
+    if ('vibrate' in navigator) {
+        const buttons = document.querySelectorAll('.btn, .feature-card');
+        buttons.forEach(button => {
+            button.addEventListener('click', function() {
+                navigator.vibrate(10);
+            });
+        });
+    }
+});
+</script>
+{% endblock %}

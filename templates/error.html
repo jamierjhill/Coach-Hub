@@ -1,66 +1,23 @@
+<!-- templates/error.html -->
 {% extends "base.html" %}
-
-{% block title %}{{ error_code }} - Error{% endblock %}
-
+{% block title %}{{ title }}{% endblock %}
 {% block content %}
-<div style="text-align: center; padding: 3rem 0;">
-  <div style="max-width: 500px; margin: 0 auto;">
-    <div style="font-size: 4rem; font-weight: 700; color: var(--text-primary); margin-bottom: 1rem;">
-      {{ error_code }}
+<div class="row justify-content-center">
+    <div class="col-md-6 text-center">
+        <div class="py-5">
+            <i class="bi bi-exclamation-triangle display-1 text-warning"></i>
+            <h2 class="mt-4">{{ title }}</h2>
+            <p class="text-muted lead">{{ message }}</p>
+            <div class="mt-4">
+                <a href="{{ url_for('dashboard') if session.get('coach_id') else url_for('index') }}" 
+                   class="btn btn-primary">
+                    <i class="bi bi-house"></i> Go Home
+                </a>
+                <button onclick="history.back()" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left"></i> Go Back
+                </button>
+            </div>
+        </div>
     </div>
-    
-    <h1 style="font-size: 1.5rem; font-weight: 600; color: var(--text-primary); margin-bottom: 2rem;">
-      {{ error_message|e }}
-    </h1>
-    
-    <div style="margin: 2rem 0;">
-      {% if error_code == 404 %}
-        <div style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.4;">🔍</div>
-        <p style="color: var(--text-secondary); margin-bottom: 0.5rem;">Page not found</p>
-        <p style="color: var(--text-muted); font-size: 0.9rem;">The page may have been moved or deleted</p>
-      {% elif error_code == 400 %}
-        <div style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.4;">❌</div>
-        <p style="color: var(--text-secondary); margin-bottom: 0.5rem;">Invalid request</p>
-        <p style="color: var(--text-muted); font-size: 0.9rem;">Please check your input and try again</p>
-      {% elif error_code == 413 %}
-        <div style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.4;">📁</div>
-        <p style="color: var(--text-secondary); margin-bottom: 0.5rem;">File too large</p>
-        <p style="color: var(--text-muted); font-size: 0.9rem;">Please use a file smaller than 2MB</p>
-      {% elif error_code == 500 %}
-        <div style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.4;">⚠️</div>
-        <p style="color: var(--text-secondary); margin-bottom: 0.5rem;">Server error</p>
-        <p style="color: var(--text-muted); font-size: 0.9rem;">Please try again later</p>
-      {% else %}
-        <div style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.4;">⚠️</div>
-        <p style="color: var(--text-secondary); margin-bottom: 0.5rem;">Something went wrong</p>
-        <p style="color: var(--text-muted); font-size: 0.9rem;">Please try again</p>
-      {% endif %}
-    </div>
-    
-    <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; margin-top: 2rem;">
-      <a href="/" class="btn-base btn-accent">Back to App</a>
-      {% if error_code != 500 %}
-        <a href="javascript:history.back()" class="btn-base btn-secondary">Go Back</a>
-      {% endif %}
-    </div>
-    
-    {% if error_code == 400 or error_code == 413 %}
-      <div style="background: var(--surface-hover); border: 1px solid var(--border-light); border-radius: var(--radius-sm); padding: 1.5rem; margin-top: 2rem; text-align: left;">
-        <h6 style="color: var(--text-primary); font-weight: 600; margin-bottom: 1rem;">Tips:</h6>
-        <ul style="color: var(--text-secondary); font-size: 0.9rem; margin: 0; padding-left: 1.25rem;">
-          {% if error_code == 400 %}
-            <li>Fill out all required fields correctly</li>
-            <li>Use only letters, numbers, and basic punctuation</li>
-            <li>Check that grades are between 1 and 4</li>
-            <li>Ensure CSV has 'name' and 'grade' columns</li>
-          {% elif error_code == 413 %}
-            <li>Keep files under 2MB</li>
-            <li>Limit to 100 players maximum</li>
-            <li>Use plain text CSV format</li>
-          {% endif %}
-        </ul>
-      </div>
-    {% endif %}
-  </div>
 </div>
 {% endblock %}

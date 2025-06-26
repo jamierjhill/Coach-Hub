@@ -1,0 +1,329 @@
+<!-- templates/invoices.html -->
+{% extends "base.html" %}
+{% block title %}Invoices{% endblock %}
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-6">
+        <h2 class="fw-bold"><i class="bi bi-receipt"></i> Invoices</h2>
+    </div>
+    <div class="col-md-6 text-md-end">
+        <a href="{{ url_for('create_invoice') }}" class="btn btn-primary">
+            <i class="bi bi-plus-circle"></i> New Invoice
+        </a>
+    </div>
+</div>
+
+<!-- Filter Tabs -->
+<div class="card mb-4">
+    <div class="card-body">
+        <ul class="nav nav-pills flex-column flex-sm-row">
+            <li class="nav-item flex-sm-fill text-sm-center">
+                <a class="nav-link {{ 'active' if status_filter == 'all' else '' }}" 
+                   href="{{ url_for('invoices', status='all') }}">
+                    All Invoices
+                </a>
+            </li>
+            <li class="nav-item flex-sm-fill text-sm-center">
+                <a class="nav-link {{ 'active' if status_filter == 'pending' else '' }}" 
+                   href="{{ url_for('invoices', status='pending') }}">
+                    Pending
+                </a>
+            </li>
+            <li class="nav-item flex-sm-fill text-sm-center">
+                <a class="nav-link {{ 'active' if status_filter == 'paid' else '' }}" 
+                   href="{{ url_for('invoices', status='paid') }}">
+                    Paid
+                </a>
+            </li>
+            <li class="nav-item flex-sm-fill text-sm-center">
+                <a class="nav-link {{ 'active' if status_filter == 'overdue' else '' }}" 
+                   href="{{ url_for('invoices', status='overdue') }}">
+                    Overdue
+                </a>
+            </li>
+        </ul>
+    </div>
+</div>
+
+<!-- Invoices Display -->
+<div class="card">
+    <div class="card-body">
+        {% if invoices %}
+        
+        <!-- Desktop Table View -->
+        <div class="d-none d-md-block">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Invoice #</th>
+                            <th>Student</th>
+                            <th>Amount</th>
+                            <th>Issue Date</th>
+                            <th>Due Date</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for invoice in invoices %}
+                        <tr>
+                            <td><strong>{{ invoice.invoice_number }}</strong></td>
+                            <td>{{ invoice.student_name }}</td>
+                            <td><strong>£{{ "%.2f"|format(invoice.amount) }}</strong></td>
+                            <td>{{ invoice.date_issued.strftime('%d/%m/%Y') }}</td>
+                            <td>{{ invoice.due_date.strftime('%d/%m/%Y') }}</td>
+                            <td>
+                                {% if invoice.status == 'paid' %}
+                                    <span class="badge bg-success">
+                                        <i class="bi bi-check-circle"></i> Paid
+                                    </span>
+                                {% elif invoice.status == 'overdue' %}
+                                    <span class="badge bg-danger">
+                                        <i class="bi bi-exclamation-triangle"></i> Overdue
+                                    </span>
+                                {% else %}
+                                    <span class="badge bg-warning text-dark">
+                                        <i class="bi bi-clock"></i> Pending
+                                    </span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="btn-group" role="group">
+                                    <!-- View Invoice -->
+                                    <a href="{{ url_for('view_invoice', invoice_id=invoice.id) }}" 
+                                       class="btn btn-sm btn-outline-primary" title="View Invoice">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                    
+                                    <!-- Edit Invoice -->
+                                    <a href="{{ url_for('edit_invoice', invoice_id=invoice.id) }}" 
+                                       class="btn btn-sm btn-outline-secondary" title="Edit Invoice">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                    
+                                    <!-- Mark as Paid (if not paid) -->
+                                    {% if invoice.status != 'paid' %}
+                                    <form method="POST" action="{{ url_for('mark_paid', invoice_id=invoice.id) }}" 
+                                          class="d-inline" onsubmit="return confirm('Mark this invoice as paid?')">
+                                        {{ csrf_form.hidden_tag() }}
+                                        <button type="submit" class="btn btn-sm btn-success" title="Mark as Paid">
+                                            <i class="bi bi-check-circle"></i>
+                                        </button>
+                                    </form>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- Mobile Card View -->
+        <div class="d-md-none">
+            {% for invoice in invoices %}
+            <div class="card mb-3 border">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <h6 class="card-title mb-0">
+                            <strong>{{ invoice.invoice_number }}</strong>
+                        </h6>
+                        {% if invoice.status == 'paid' %}
+                            <span class="badge bg-success">
+                                <i class="bi bi-check-circle"></i> Paid
+                            </span>
+                        {% elif invoice.status == 'overdue' %}
+                            <span class="badge bg-danger">
+                                <i class="bi bi-exclamation-triangle"></i> Overdue
+                            </span>
+                        {% else %}
+                            <span class="badge bg-warning text-dark">
+                                <i class="bi bi-clock"></i> Pending
+                            </span>
+                        {% endif %}
+                    </div>
+                    
+                    <h5 class="card-subtitle mb-2">{{ invoice.student_name }}</h5>
+                    
+                    <div class="row text-muted small mb-3">
+                        <div class="col-6">
+                            <strong>Amount:</strong><br>
+                            <span class="text-success fs-6">£{{ "%.2f"|format(invoice.amount) }}</span>
+                        </div>
+                        <div class="col-6">
+                            <strong>Due:</strong><br>
+                            {{ invoice.due_date.strftime('%d/%m/%Y') }}
+                        </div>
+                    </div>
+                    
+                    {% if invoice.status == 'paid' and invoice.paid_at %}
+                    <div class="text-muted small mb-2">
+                        <i class="bi bi-check-circle text-success"></i> Paid {{ invoice.paid_at.strftime('%d/%m/%Y') }}
+                    </div>
+                    {% endif %}
+                    
+                    <!-- Mobile Actions -->
+                    <div class="d-grid gap-2">
+                        <div class="row g-2">
+                            <div class="col">
+                                <a href="{{ url_for('view_invoice', invoice_id=invoice.id) }}" 
+                                   class="btn btn-outline-primary btn-sm w-100">
+                                    <i class="bi bi-eye"></i> View
+                                </a>
+                            </div>
+                            <div class="col">
+                                <a href="{{ url_for('edit_invoice', invoice_id=invoice.id) }}" 
+                                   class="btn btn-outline-secondary btn-sm w-100">
+                                    <i class="bi bi-pencil"></i> Edit
+                                </a>
+                            </div>
+                            {% if invoice.status != 'paid' %}
+                            <div class="col">
+                                <form method="POST" action="{{ url_for('mark_paid', invoice_id=invoice.id) }}" 
+                                      onsubmit="return confirm('Mark this invoice as paid?')">
+                                    {{ csrf_form.hidden_tag() }}
+                                    <button type="submit" class="btn btn-success btn-sm w-100">
+                                        <i class="bi bi-check-circle"></i> Paid
+                                    </button>
+                                </form>
+                            </div>
+                            {% endif %}
+                        </div>
+                        
+                        <!-- Secondary Actions -->
+                        <div class="row g-2">
+                            <div class="col">
+                                <a href="{{ url_for('repeat_invoice', invoice_id=invoice.id) }}" 
+                                   class="btn btn-outline-info btn-sm w-100">
+                                    <i class="bi bi-arrow-repeat"></i> Repeat
+                                </a>
+                            </div>
+                            <div class="col">
+                                <form method="POST" action="{{ url_for('delete_invoice', invoice_id=invoice.id) }}" 
+                                      onsubmit="return confirm('Are you sure you want to delete this invoice? This action cannot be undone.')">
+                                    {{ csrf_form.hidden_tag() }}
+                                    <button type="submit" class="btn btn-outline-danger btn-sm w-100">
+                                        <i class="bi bi-trash"></i> Delete
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        
+        <!-- Summary Cards - Mobile Optimized -->
+        <div class="row mt-4">
+            <div class="col-md-4 mb-3">
+                <div class="card bg-light text-center">
+                    <div class="card-body py-3">
+                        <h6 class="card-title">Total Invoices</h6>
+                        <h4 class="text-primary mb-0">{{ invoices|length }}</h4>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 mb-3">
+                <div class="card bg-light text-center">
+                    <div class="card-body py-3">
+                        <h6 class="card-title">Total Amount</h6>
+                        <h4 class="text-success mb-0">
+                            £{{ "%.2f"|format(invoices|sum(attribute='amount')|float) }}
+                        </h4>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 mb-3">
+                <div class="card bg-light text-center">
+                    <div class="card-body py-3">
+                        <h6 class="card-title">Pending Amount</h6>
+                        <h4 class="text-warning mb-0">
+                            {% set pending_amount = invoices|selectattr('status', 'ne', 'paid')|sum(attribute='amount')|float %}
+                            £{{ "%.2f"|format(pending_amount) }}
+                        </h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        {% else %}
+        <!-- Empty State - Mobile Optimized -->
+        <div class="text-center py-5">
+            <i class="bi bi-receipt display-4 text-muted"></i>
+            <h4 class="text-muted mt-3">
+                {% if status_filter == 'all' %}
+                    No invoices yet
+                {% else %}
+                    No {{ status_filter }} invoices
+                {% endif %}
+            </h4>
+            <p class="text-muted mb-4">
+                {% if status_filter == 'all' %}
+                    Create your first invoice to start tracking payments
+                {% else %}
+                    Try viewing all invoices or create a new one
+                {% endif %}
+            </p>
+            <div class="d-grid gap-2 d-sm-block">
+                <a href="{{ url_for('create_invoice') }}" class="btn btn-primary">
+                    <i class="bi bi-plus-circle"></i> Create Invoice
+                </a>
+                {% if status_filter != 'all' %}
+                <a href="{{ url_for('invoices', status='all') }}" class="btn btn-outline-secondary">
+                    <i class="bi bi-eye"></i> View All Invoices
+                </a>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Add haptic feedback for mobile interactions (if supported)
+document.addEventListener('DOMContentLoaded', function() {
+    const buttons = document.querySelectorAll('.btn');
+    
+    buttons.forEach(button => {
+        button.addEventListener('click', function() {
+            // Provide haptic feedback on supported devices
+            if ('vibrate' in navigator) {
+                navigator.vibrate(10);
+            }
+        });
+    });
+    
+    // Add smooth scrolling for anchor links
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener('click', function (e) {
+            e.preventDefault();
+            const target = document.querySelector(this.getAttribute('href'));
+            if (target) {
+                target.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'start'
+                });
+            }
+        });
+    });
+    
+    // Optimize form submissions for mobile
+    const forms = document.querySelectorAll('form');
+    forms.forEach(form => {
+        const submitButton = form.querySelector('button[type="submit"]');
+        if (submitButton) {
+            form.addEventListener('submit', function() {
+                submitButton.innerHTML = '<i class="bi bi-hourglass-split"></i> Processing...';
+                submitButton.disabled = true;
+            });
+        }
+    });
+});
+</script>
+{% endblock %}

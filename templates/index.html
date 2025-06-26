@@ -1,1151 +1,234 @@
-{% extends "base.html" %}
-
-{% block title %}🎾 Tennis Match Organizer{% endblock %}
-
-{% block content %}
-  <div class="page-title-container">
-    <h1 class="page-title">Tennis Match Organizer</h1>
-    <p class="page-subtitle">Create fair and balanced tennis matches in seconds</p>
-  </div>
-
-  <form method="POST" action="/index" enctype="multipart/form-data">
-    <!-- CSRF Token Protection (only if available) -->
-    {% if csrf_available %}
-      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-    {% endif %}
+<!-- templates/index.html -->
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CoachPay - Invoice Management for Coaches</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     
-    <!-- Session Setup -->
-    <div class="card-base">
-      <h4 class="section-title">⚙️ Setup</h4>
-      <div class="row g-4">
-        <div class="col-md-4">
-          <label class="form-label">Courts</label>
-          <div class="input-group">
-            <span class="input-group-text">🏟️</span>
-            <input type="number" class="form-control" name="courts" min="1" max="20" value="{{ courts }}" required 
-                   onchange="trackTennisEvent('change', 'Setup', 'courts_changed', this.value)">
-          </div>
-        </div>
-        <div class="col-md-4">
-          <label class="form-label">Rounds</label>
-          <div class="input-group">
-            <span class="input-group-text">🔄</span>
-            <input type="number" class="form-control" name="num_matches" min="1" max="10" value="{{ num_matches }}" required id="totalRounds"
-                   onchange="trackTennisEvent('change', 'Setup', 'rounds_changed', this.value)">
-          </div>
-        </div>
-        <div class="col-md-4">
-          <label class="form-label">Format</label>
-          <div class="input-group">
-            <span class="input-group-text">🎾</span>
-            <select class="form-control" name="match_type" required 
-                    onchange="trackTennisEvent('change', 'Setup', 'format_changed', '', {match_type: this.value})">
-              <option value="singles" {% if match_type == "singles" %}selected{% endif %}>Singles</option>
-              <option value="doubles" {% if match_type == "doubles" %}selected{% endif %}>Doubles</option>
-            </select>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Player Management -->
-    <div class="card-base">
-      <h4 class="section-title">👥 Players <span class="badge-base status-info">{{ players|length }}</span></h4>
-      
-      <!-- Add Player -->
-      <div class="card-section">
-        <div class="row g-3 align-items-end">
-          <div class="col-md-4">
-            <label class="form-label">Name</label>
-            <input type="text" name="name" class="form-control" placeholder="Enter player name" id="playerName" 
-                   maxlength="50" pattern="[a-zA-Z0-9\s\-']+" 
-                   title="Only letters, numbers, spaces, hyphens and apostrophes allowed"
-                   onfocus="trackTennisEvent('focus', 'Player Management', 'name_field_focus')">
-          </div>
-          <div class="col-md-2">
-            <label class="form-label">Grade</label>
-            <select name="grade" class="form-control" id="playerGrade" required
-                    onchange="trackTennisEvent('change', 'Player Management', 'grade_selected', this.value)">
-              <option value="">Select</option>
-              <option value="1">1 (Strongest)</option>
-              <option value="2">2 (Strong)</option>
-              <option value="3">3 (Medium)</option>
-              <option value="4">4 (Beginner)</option>
-            </select>
-          </div>
-          <div class="col-md-2">
-            <label class="form-label">Max Rounds</label>
-            <select name="max_rounds" class="form-control" id="playerMaxRounds"
-                    onchange="trackTennisEvent('change', 'Player Management', 'max_rounds_selected', this.value)">
-              <option value="">All rounds</option>
-              <option value="1">1 round only</option>
-              <option value="2">2 rounds max</option>
-              <option value="3">3 rounds max</option>
-              <option value="4">4 rounds max</option>
-              <option value="5">5 rounds max</option>
-              <option value="6">6 rounds max</option>
-              <option value="7">7 rounds max</option>
-              <option value="8">8 rounds max</option>
-              <option value="9">9 rounds max</option>
-              <option value="10">10 rounds max</option>
-            </select>
-          </div>
-          <div class="col-md-4">
-            <button type="submit" name="add_player" value="true" class="btn-base btn-accent w-100" 
-                    onclick="return validateAddPlayer()"
-                    onmouseenter="trackTennisEvent('hover', 'Player Management', 'add_player_button')">
-              Add Player
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Error Display (for server-side validation errors only) -->
-      {% if error %}
-        <div class="card-section">
-          <div class="alert alert-danger">
-            <strong>❌</strong> {{ error|e }}
-          </div>
-        </div>
-        <script>
-          // Track errors for analytics
-          trackError('form_validation', '{{ error|e|replace("'", "\\'") }}', 'player_management');
-        </script>
-      {% endif %}
-
-      <!-- Players List -->
-      {% if players %}
-        <div class="row g-3" style="margin-top: 1rem;">
-          {% for player in players %}
-            <div class="col-md-6 col-lg-4">
-              <div class="player-card">
-                <div class="player-info">
-                  <div class="player-name">{{ player.name|e }}</div>
-                  <div class="player-grade">Grade {{ player.grade }}</div>
-                  {% if player.max_rounds is defined %}
-                    <div class="badge-base status-warning" style="margin-top: 4px;">{{ player.max_rounds }} round{{ 's' if player.max_rounds != 1 else '' }} max</div>
-                  {% endif %}
-                </div>
-                <div class="player-actions">
-                  <button type="button" class="btn-base btn-outline-secondary btn-sm" 
-                         onclick="confirmRemovePlayer('{{ player.name|e }}')"
-                         onmouseenter="trackTennisEvent('hover', 'Player Management', 'remove_player_button')">
-                    Remove
-                  </button>
-                </div>
-              </div>
-            </div>
-          {% endfor %}
-        </div>
-      {% else %}
-        <div class="empty-state">
-          <div class="empty-icon">👥</div>
-          <h6>No Players Added</h6>
-          <p class="text-muted">Add players to get started</p>
-        </div>
-      {% endif %}
-    </div>
-    
-    <!-- Action Controls -->
-    {% if players %}
-    <div class="card-base" style="text-align: center;">
-      <div class="action-controls">
-        <button type="button" class="btn-base btn-accent btn-lg" onclick="organizeMatches()"
-                onmouseenter="trackTennisEvent('hover', 'Match Organization', 'organize_button')">
-          Organize Matches
-        </button>
-        <button type="button" class="btn-base btn-secondary" onclick="reshuffleAll()"
-                onmouseenter="trackTennisEvent('hover', 'Match Organization', 'reshuffle_all_button')">
-          Reshuffle All
-        </button>
-        <button type="button" class="btn-base btn-outline-danger" onclick="confirmReset()"
-                onmouseenter="trackTennisEvent('hover', 'Session Management', 'reset_button')">
-          Reset
-        </button>
-      </div>
-    </div>
-    {% endif %}
-
-    <!-- Match Schedule -->
-    {% if matchups and rounds %}
-    <div class="card-base" id="matches-section">
-      <div class="schedule-header">
-        <h4 class="section-title">📋 Matches</h4>
-      </div>
-
-      <!-- Schedule by Round -->
-      <div id="schedule-round" class="schedule-container">
-        {% for round_num, matches in rounds.items() %}
-          <div class="round-section" data-round="{{ round_num }}">
-            <div class="round-header">
-              <h5 class="round-title">Round {{ round_num }}</h5>
-              <button type="button" class="btn-base btn-info btn-sm mobile-touch-target"
-                     onclick="reshuffleRound({{ round_num }})"
-                     data-round="{{ round_num }}"
-                     onmouseenter="trackTennisEvent('hover', 'Match Organization', 'reshuffle_round_button', {{ round_num }})">
-                Reshuffle
-              </button>
-            </div>
-            
-            <div class="matches-grid">
-              {% for court_num, match in matches %}
-                <div class="match-card" onclick="trackTennisEvent('click', 'Match Interaction', 'match_card_click', {{ round_num }}, {court: {{ court_num }}})">
-                  <div class="court-label">Court {{ court_num }}</div>
-                  <div class="match-players">
-                    {% if match|length == 2 %}
-                      <div class="vs-match">
-                        <div class="player">
-                          <span class="name">{{ match[0].name|e }}</span>
-                          <span class="grade">G{{ match[0].grade }}</span>
-                        </div>
-                        <div class="vs">VS</div>
-                        <div class="player">
-                          <span class="name">{{ match[1].name|e }}</span>
-                          <span class="grade">G{{ match[1].grade }}</span>
-                        </div>
-                      </div>
-                    {% else %}
-                      <div class="doubles-match">
-                        <div class="team">
-                          <div class="team-players">
-                            <span class="name">{{ match[0].name|e }}</span> & <span class="name">{{ match[1].name|e }}</span>
-                          </div>
-                          <span class="avg-grade">Avg G{{ ((match[0].grade + match[1].grade) / 2) | round(1) }}</span>
-                        </div>
-                        <div class="vs">VS</div>
-                        <div class="team">
-                          <div class="team-players">
-                            <span class="name">{{ match[2].name|e }}</span> & <span class="name">{{ match[3].name|e }}</span>
-                          </div>
-                          <span class="avg-grade">Avg G{{ ((match[2].grade + match[3].grade) / 2) | round(1) }}</span>
-                        </div>
-                      </div>
-                    {% endif %}
-                  </div>
-                </div>
-              {% endfor %}
-            </div>
-            
-            <!-- Players sitting out -->
-            {% set playing_players = [] %}
-            {% for court_num, match in matches %}
-              {% for player in match %}
-                {% set _ = playing_players.append(player.name) %}
-              {% endfor %}
-            {% endfor %}
-            
-            {% set sitting_out = [] %}
-            {% for player in players %}
-              {% if player.name not in playing_players %}
-                {% set _ = sitting_out.append(player.name) %}
-              {% endif %}
-            {% endfor %}
-            
-            {% if sitting_out %}
-              <div class="sitting-out">
-                <strong>Sitting out:</strong> {{ sitting_out|join(', ')|e }}
-              </div>
-            {% endif %}
-          </div>
-        {% endfor %}
-      </div>
-
-    {% elif players %}
-    <div class="card-base">
-      <div class="empty-state">
-        <div class="empty-icon">📋</div>
-        <h6>Ready to Organize</h6>
-        <p class="text-muted">Click "Organize Matches" to create your schedule</p>
-        {% if players|length < (2 if match_type == "singles" else 4) %}
-          <div class="alert alert-warning mt-3">
-            Need at least {{ 2 if match_type == "singles" else 4 }} players for {{ match_type }} matches
-          </div>
-        {% endif %}
-      </div>
-    </div>
-    {% endif %}
-  </form>
-
-  <!-- Track initial page load data -->
-  <script>
-    document.addEventListener('DOMContentLoaded', function() {
-      // Track initial page state
-      const initialData = {
-        player_count: {{ players|length }},
-        match_type: '{{ match_type }}',
-        court_count: {{ courts }},
-        rounds: {{ num_matches }},
-        has_matches: {{ 'true' if matchups and rounds else 'false' }}
-      };
-      
-      trackEngagement('page_load', initialData);
-      
-      // Track if user has existing session data
-      if (initialData.player_count > 0) {
-        trackEngagement('returning_session', {
-          players: initialData.player_count,
-          has_matches: initialData.has_matches
-        });
-      }
-      
-      // Track session type based on device
-      const isMobile = window.innerWidth <= 768;
-      trackTennisEvent('session_start', 'Device Type', isMobile ? 'mobile' : 'desktop', 1, {
-        screen_width: window.innerWidth,
-        screen_height: window.innerHeight
-      });
-    });
-  </script>
-
-{% endblock %}
-
-{% block extra_js %}
-<script>
-// Enhanced analytics tracking for tennis app
-// Update global journey tracking
-userJourney.current_players = {{ players|length }};
-userJourney.current_match_type = '{{ match_type }}';
-userJourney.current_courts = {{ courts }};
-userJourney.current_rounds = {{ num_matches }};
-userJourney.has_matches = {{ 'true' if matchups and rounds else 'false' }};
-
-// Timer variables with analytics
-let timerInterval = null;
-let isPaused = false;
-let timeRemaining = 20 * 60; // 20 minutes in seconds
-let timerStartTime = null;
-
-// Mobile-specific variables
-let touchStartX = 0;
-let touchEndX = 0;
-let currentRound = 1;
-
-// Track timer usage
-function trackTimerEvent(action, value) {
-  trackTennisEvent(action, 'Timer', 'round_timer', value, {
-    match_type: userJourney.current_match_type,
-    players: userJourney.current_players
-  });
-}
-
-// Auto-hide any remaining flash messages (cleanup)
-document.addEventListener('DOMContentLoaded', function() {
-  const flashMessages = document.querySelectorAll('.flash-messages .alert');
-  flashMessages.forEach(function(message) {
-    message.style.display = 'none';
-  });
-  
-  // Initialize mobile features
-  initializeMobileFeatures();
-  
-  // Track page elements interaction
-  setupElementTracking();
-});
-
-// Setup tracking for various page elements
-function setupElementTracking() {
-  // Track form field interactions
-  const nameField = document.getElementById('playerName');
-  if (nameField) {
-    let nameFieldStartTime = null;
-    nameField.addEventListener('focus', function() {
-      nameFieldStartTime = Date.now();
-    });
-    nameField.addEventListener('blur', function() {
-      if (nameFieldStartTime) {
-        const timeSpent = Date.now() - nameFieldStartTime;
-        if (timeSpent > 2000) { // Only track if they spent more than 2 seconds
-          trackTennisEvent('field_engagement', 'Form Interaction', 'name_field_time', Math.round(timeSpent / 1000));
+    <style>
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
         }
-      }
-    });
-  }
-  
-  // Track section visibility
-  const observer = new IntersectionObserver((entries) => {
-    entries.forEach(entry => {
-      if (entry.isIntersecting) {
-        const sectionName = entry.target.querySelector('.section-title')?.textContent || 'unknown';
-        trackTennisEvent('section_view', 'Content Engagement', sectionName.replace(/[^\w\s]/gi, '').trim());
-      }
-    });
-  }, { threshold: 0.5 });
-  
-  document.querySelectorAll('.card-base').forEach(card => {
-    observer.observe(card);
-  });
-}
-
-// Mobile feature initialization with analytics
-function initializeMobileFeatures() {
-  // Add touch gesture support for round navigation
-  const scheduleContainer = document.querySelector('.schedule-container');
-  if (scheduleContainer && window.innerWidth <= 768) {
-    scheduleContainer.addEventListener('touchstart', handleTouchStart, { passive: true });
-    scheduleContainer.addEventListener('touchend', handleTouchEnd, { passive: true });
-    
-    // Track mobile gesture usage
-    trackTennisEvent('mobile_features', 'Interface', 'gesture_support_enabled');
-  }
-  
-  // Add mobile-specific button feedback
-  const buttons = document.querySelectorAll('.btn-base');
-  buttons.forEach(button => {
-    button.addEventListener('touchstart', handleButtonTouchStart, { passive: true });
-    button.addEventListener('touchend', handleButtonTouchEnd, { passive: true });
-  });
-  
-  // Initialize sticky elements for mobile
-  initializeStickyElements();
-  
-  // Add viewport height adjustment for mobile browsers
-  adjustViewportHeight();
-}
-
-// Touch gesture handlers with analytics
-function handleTouchStart(e) {
-  touchStartX = e.changedTouches[0].screenX;
-}
-
-function handleTouchEnd(e) {
-  touchEndX = e.changedTouches[0].screenX;
-  handleSwipeGesture();
-}
-
-function handleSwipeGesture() {
-  const swipeThreshold = 50;
-  const swipeDistance = touchEndX - touchStartX;
-  
-  if (Math.abs(swipeDistance) > swipeThreshold) {
-    const rounds = document.querySelectorAll('.round-section');
-    if (rounds.length <= 1) return;
-    
-    const direction = swipeDistance > 0 ? 'right' : 'left';
-    trackTennisEvent('swipe_gesture', 'Mobile Interaction', direction, Math.abs(swipeDistance));
-    
-    if (swipeDistance > 0 && currentRound > 1) {
-      // Swipe right - previous round
-      navigateToRound(currentRound - 1);
-    } else if (swipeDistance < 0 && currentRound < rounds.length) {
-      // Swipe left - next round
-      navigateToRound(currentRound + 1);
-    }
-  }
-}
-
-function navigateToRound(roundNumber) {
-  const roundElement = document.querySelector(`[data-round="${roundNumber}"]`);
-  if (roundElement) {
-    roundElement.scrollIntoView({ 
-      behavior: 'smooth', 
-      block: 'start',
-      inline: 'nearest'
-    });
-    currentRound = roundNumber;
-    
-    // Track round navigation
-    trackTennisEvent('round_navigation', 'Match Viewing', 'round_' + roundNumber, roundNumber);
-    
-    // Show navigation feedback
-    showMobileMessage(`Round ${roundNumber}`, 'info', 1500);
-  }
-}
-
-// Enhanced button touch feedback
-function handleButtonTouchStart(e) {
-  e.target.classList.add('mobile-pressed');
-}
-
-function handleButtonTouchEnd(e) {
-  setTimeout(() => {
-    e.target.classList.remove('mobile-pressed');
-  }, 150);
-}
-
-// Sticky elements initialization
-function initializeStickyElements() {
-  if (window.innerWidth <= 768) {
-    const actionControls = document.querySelector('.action-controls');
-    const timerWidget = document.querySelector('.timer-widget');
-    
-    if (actionControls) {
-      actionControls.style.position = 'sticky';
-      actionControls.style.bottom = '0';
-      trackTennisEvent('ui_adaptation', 'Mobile Interface', 'sticky_controls_enabled');
-    }
-    
-    if (timerWidget && document.querySelector('#matches-section')) {
-      timerWidget.style.position = 'sticky';
-      timerWidget.style.top = '80px';
-      trackTennisEvent('ui_adaptation', 'Mobile Interface', 'sticky_timer_enabled');
-    }
-  }
-}
-
-// Mobile viewport height adjustment
-function adjustViewportHeight() {
-  const setVH = () => {
-    const vh = window.innerHeight * 0.01;
-    document.documentElement.style.setProperty('--vh', `${vh}px`);
-  };
-  
-  setVH();
-  window.addEventListener('resize', setVH);
-  window.addEventListener('orientationchange', () => {
-    setTimeout(setVH, 100);
-    // Track orientation changes
-    trackTennisEvent('orientation_change', 'Mobile Interaction', screen.orientation?.type || 'unknown');
-  });
-}
-
-// Mobile-optimized message display with analytics
-function showMobileMessage(message, type = 'info', duration = 3000) {
-  // Track mobile message display
-  trackTennisEvent('mobile_message', 'User Feedback', type, 1, {message: message.substring(0, 50)});
-  
-  // Remove existing messages
-  const existingMessages = document.querySelectorAll('.mobile-message');
-  existingMessages.forEach(msg => msg.remove());
-  
-  // Create new message
-  const messageDiv = document.createElement('div');
-  messageDiv.className = `mobile-message alert alert-${type}`;
-  messageDiv.style.cssText = `
-    position: fixed;
-    top: 20px;
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 9999;
-    max-width: 280px;
-    padding: 0.75rem 1rem;
-    border-radius: 8px;
-    font-size: 0.875rem;
-    text-align: center;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    animation: slideInFromTop 0.3s ease-out;
-  `;
-  
-  // Add emoji based on type
-  let emoji = '';
-  switch(type) {
-    case 'success': emoji = '✅ '; break;
-    case 'warning': emoji = '⚠️ '; break;
-    case 'danger': emoji = '❌ '; break;
-    case 'info': emoji = 'ℹ️ '; break;
-  }
-  
-  messageDiv.textContent = emoji + message;
-  document.body.appendChild(messageDiv);
-  
-  // Auto-remove
-  setTimeout(() => {
-    messageDiv.style.opacity = '0';
-    messageDiv.style.transform = 'translateX(-50%) translateY(-20px)';
-    setTimeout(() => {
-      if (messageDiv.parentNode) {
-        messageDiv.remove();
-      }
-    }, 300);
-  }, duration);
-}
-
-// Enhanced validation with analytics
-function validateAddPlayer() {
-  const name = document.getElementById('playerName').value.trim();
-  const grade = document.getElementById('playerGrade').value;
-  const maxRounds = document.getElementById('playerMaxRounds').value;
-  const totalRounds = parseInt(document.getElementById('totalRounds').value);
-  
-  const validationStart = Date.now();
-  
-  if (!name) {
-    trackError('validation_error', 'empty_name', 'add_player');
-    showMobileMessage('Please enter a player name', 'warning');
-    return false;
-  }
-  
-  if (!grade) {
-    trackError('validation_error', 'no_grade_selected', 'add_player');
-    showMobileMessage('Please select a grade', 'warning');
-    return false;
-  }
-  
-  // Validate max rounds if specified
-  if (maxRounds && parseInt(maxRounds) > totalRounds) {
-    trackError('validation_error', 'max_rounds_exceeds_total', 'add_player');
-    showMobileMessage(`Max rounds (${maxRounds}) cannot exceed total rounds (${totalRounds})`, 'warning');
-    return false;
-  }
-  
-  // Check for duplicate names
-  const existingPlayers = document.querySelectorAll('.player-name');
-  for (let player of existingPlayers) {
-    if (player.textContent.toLowerCase() === name.toLowerCase()) {
-      trackError('validation_error', 'duplicate_player_name', 'add_player');
-      showMobileMessage('Player with this name already exists', 'warning');
-      return false;
-    }
-  }
-  
-  // Track successful validation
-  const validationTime = Date.now() - validationStart;
-  trackPerformance('form_validation_time', validationTime, 'add_player');
-  trackTennisEvent('validation_success', 'Player Management', 'add_player_validated');
-  
-  return true;
-}
-
-function validateCSVUpload() {
-  const fileInput = document.getElementById('csvFileInput');
-  if (!fileInput.files.length) {
-    trackError('validation_error', 'no_csv_file_selected', 'csv_upload');
-    showMobileMessage('Please select a CSV file', 'warning');
-    return false;
-  }
-  
-  const file = fileInput.files[0];
-  trackTennisEvent('csv_upload_attempt', 'Data Management', 'file_selected', file.size, {
-    file_name: file.name,
-    file_type: file.type
-  });
-  
-  return true;
-}
-
-function validateOrganizeMatches() {
-  const players = document.querySelectorAll('.player-card');
-  const matchType = document.querySelector('select[name="match_type"]').value;
-  const minPlayers = matchType === 'singles' ? 2 : 4;
-  
-  if (players.length < minPlayers) {
-    trackError('validation_error', 'insufficient_players', 'organize_matches');
-    showMobileMessage(`You need at least ${minPlayers} players for ${matchType} matches`, 'warning');
-    return false;
-  }
-  
-  trackTennisEvent('organize_matches_validated', 'Match Organization', 'validation_passed', players.length, {
-    match_type: matchType,
-    player_count: players.length
-  });
-  
-  return true;
-}
-
-// Update max rounds options when total rounds changes
-function updateMaxRoundsOptions() {
-  const totalRoundsInput = document.getElementById('totalRounds');
-  const maxRoundsSelect = document.getElementById('playerMaxRounds');
-  const totalRounds = parseInt(totalRoundsInput.value) || 10;
-  
-  // Track configuration changes
-  trackTennisEvent('config_change', 'Setup', 'total_rounds_updated', totalRounds);
-  
-  // Clear existing options except "All rounds"
-  maxRoundsSelect.innerHTML = '<option value="">All rounds</option>';
-  
-  // Add options up to total rounds
-  for (let i = 1; i <= Math.min(totalRounds, 10); i++) {
-    const option = document.createElement('option');
-    option.value = i;
-    option.textContent = `${i} round${i !== 1 ? 's' : ''} ${i === 1 ? 'only' : 'max'}`;
-    maxRoundsSelect.appendChild(option);
-  }
-}
-
-// CSRF Token helper
-function getCSRFToken() {
-  const csrfInput = document.querySelector('input[name="csrf_token"]');
-  return csrfInput ? csrfInput.value : '';
-}
-
-// Scroll position helpers
-function saveScrollPosition() {
-  sessionStorage.setItem('scrollPosition', window.pageYOffset);
-}
-
-function restoreScrollPosition() {
-  const scrollPos = sessionStorage.getItem('scrollPosition');
-  if (scrollPos) {
-    window.scrollTo(0, parseInt(scrollPos));
-    sessionStorage.removeItem('scrollPosition');
-  }
-}
-
-// Empty state removal
-function removeAllEmptyStates() {
-  const emptyStates = document.querySelectorAll('.empty-state');
-  emptyStates.forEach(state => {
-    const card = state.closest('.card-base');
-    if (card && !card.querySelector('.player-card')) {
-      card.remove();
-    }
-  });
-}
-
-// Event handler reattachment
-function reattachEventHandlers() {
-  // Reattach reshuffle round buttons
-  const reshuffleButtons = document.querySelectorAll('[onclick*="reshuffleRound"]');
-  reshuffleButtons.forEach(button => {
-    const roundNum = button.getAttribute('data-round');
-    if (roundNum) {
-      button.onclick = () => reshuffleRound(parseInt(roundNum));
-    }
-  });
-  
-  // Reinitialize mobile features
-  initializeMobileFeatures();
-}
-
-// Main organize matches function with enhanced analytics
-function organizeMatches() {
-  if (!validateOrganizeMatches()) {
-    return;
-  }
-  
-  const startTime = Date.now();
-  const playerCount = document.querySelectorAll('.player-card').length;
-  const matchType = document.querySelector('select[name="match_type"]').value;
-  const courts = parseInt(document.querySelector('input[name="courts"]').value);
-  const rounds = parseInt(document.querySelector('input[name="num_matches"]').value);
-  
-  // Track organize attempt
-  trackFeatureUsage('organize_matches', true, {
-    match_type: matchType,
-    player_count: playerCount,
-    court_count: courts,
-    rounds: rounds
-  });
-  
-  // Show loading state
-  const button = event.target;
-  const originalText = button.innerHTML;
-  button.innerHTML = '<span>Organizing...</span>';
-  button.disabled = true;
-  
-  // Show loading message
-  showMobileMessage('Creating matches...', 'info', 10000);
-  
-  const formData = new FormData();
-  formData.append('organize_matches', 'true');
-  
-  // Add CSRF token if available
-  const csrfToken = getCSRFToken();
-  if (csrfToken) {
-    formData.append('csrf_token', csrfToken);
-  }
-  
-  // Add current form state
-  const form = document.querySelector('form');
-  const inputs = form.querySelectorAll('input[type="number"], select');
-  inputs.forEach(input => {
-    if (input.name && input.value) {
-      formData.append(input.name, input.value);
-    }
-  });
-  
-  fetch('/index', {
-    method: 'POST',
-    body: formData
-  })
-  .then(response => {
-    if (!response.ok) {
-      throw new Error('Network response was not ok');
-    }
-    return response.text();
-  })
-  .then(html => {
-    const processTime = Date.now() - startTime;
-    
-    // Track successful organization
-    trackPerformance('organize_matches_time', processTime, 'ajax_success');
-    trackEngagement('matches_organized', {
-      match_type: matchType,
-      player_count: playerCount,
-      court_count: courts,
-      rounds: rounds,
-      processing_time: processTime
-    });
-    
-    // Update journey tracking
-    userJourney.matches_organized++;
-    
-    // Remove loading message
-    const loadingMsg = document.querySelector('.mobile-message');
-    if (loadingMsg) loadingMsg.remove();
-    
-    // Parse the response and update the page content
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(html, 'text/html');
-    
-    // Update CSRF token if present
-    const newToken = doc.querySelector('input[name="csrf_token"]');
-    const currentToken = document.querySelector('input[name="csrf_token"]');
-    if (newToken && currentToken) {
-      currentToken.value = newToken.value;
-    }
-    
-    // Remove any existing empty states
-    removeAllEmptyStates();
-    
-    // Update or create matches section
-    const newMatchesSection = doc.querySelector('#matches-section');
-    const currentMatchesSection = document.querySelector('#matches-section');
-    
-    if (newMatchesSection) {
-      if (currentMatchesSection) {
-        // Update existing matches section
-        currentMatchesSection.innerHTML = newMatchesSection.innerHTML;
-      } else {
-        // Create new matches section
-        const actionControls = document.querySelector('.action-controls').closest('.card-base');
-        const matchesHTML = `<div class="card-base" id="matches-section">${newMatchesSection.innerHTML}</div>`;
-        actionControls.insertAdjacentHTML('afterend', matchesHTML);
-      }
-      reattachEventHandlers();
-      
-      // Show success message
-      showMobileMessage('Matches organized successfully!', 'success');
-      
-      // Track match cards created
-      const matchCards = document.querySelectorAll('.match-card');
-      trackTennisEvent('matches_created', 'Match Organization', 'cards_generated', matchCards.length);
-    }
-    
-    // Add timer widget if not present and matches were created
-    const newTimerWidget = doc.querySelector('.timer-widget');
-    const currentTimerWidget = document.querySelector('.timer-widget');
-    
-    if (newTimerWidget && !currentTimerWidget && newMatchesSection) {
-      const matchesSection = document.querySelector('#matches-section');
-      if (matchesSection) {
-        const timerHTML = `<div class="card-base"><div class="timer-widget">${newTimerWidget.outerHTML}</div></div>`;
-        matchesSection.insertAdjacentHTML('afterend', timerHTML);
         
-        // Initialize timer
-        const display = document.getElementById('main-timer-display');
-        if (display) {
-          timeRemaining = 20 * 60; // Reset to 20 minutes
-          updateClockDisplay(display);
-          trackTennisEvent('timer_initialized', 'Timer', 'auto_created');
+        .hero-section {
+            background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 50%, #1e40af 100%);
+            color: white;
+            padding: 120px 0;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
         }
-      }
-    }
-    
-    // Final cleanup
-    setTimeout(removeAllEmptyStates, 100);
-    
-  })
-  .catch(error => {
-    const errorTime = Date.now() - startTime;
-    console.error('Error organizing matches:', error);
-    
-    // Track error
-    trackError('organize_matches_ajax_error', error.message, 'ajax_fallback');
-    trackPerformance('organize_matches_error_time', errorTime, 'ajax_error');
-    
-    showMobileMessage('Error organizing matches. Trying alternative method...', 'warning');
-    
-    // Fallback to form submission if AJAX fails
-    saveScrollPosition();
-    const hiddenInput = document.createElement('input');
-    hiddenInput.type = 'hidden';
-    hiddenInput.name = 'organize_matches';
-    hiddenInput.value = 'true';
-    form.appendChild(hiddenInput);
-    form.submit();
-  })
-  .finally(() => {
-    // Restore button state
-    button.innerHTML = originalText;
-    button.disabled = false;
-  });
-}
-
-// Enhanced reshuffle functions with comprehensive analytics
-function reshuffleAll() {
-  if (confirm('This will reshuffle all players and create new matches. Continue?')) {
-    const playerCount = document.querySelectorAll('.player-card').length;
-    const matchType = document.querySelector('select[name="match_type"]').value;
-    
-    // Track reshuffle attempt
-    trackFeatureUsage('reshuffle_all', true, {
-      match_type: matchType,
-      player_count: playerCount
-    });
-    
-    userJourney.reshuffles++;
-    sessionStorage.setItem('lastAction', 'reshuffle_all');
-    
-    // Show loading state
-    const button = event.target;
-    const originalText = button.innerHTML;
-    button.innerHTML = 'Reshuffling...';
-    button.disabled = true;
-    
-    // Mobile feedback
-    showMobileMessage('Reshuffling all matches...', 'info', 5000);
-    
-    saveScrollPosition();
-    const form = document.querySelector('form');
-    const hiddenInput = document.createElement('input');
-    hiddenInput.type = 'hidden';
-    hiddenInput.name = 'reshuffle';
-    hiddenInput.value = 'true';
-    form.appendChild(hiddenInput);
-    form.submit();
-  } else {
-    // Track cancelled reshuffle
-    trackTennisEvent('reshuffle_cancelled', 'Match Organization', 'user_cancelled_reshuffle_all');
-  }
-}
-
-function reshuffleRound(roundNum) {
-  // Track round reshuffle attempt
-  trackFeatureUsage('reshuffle_round', true, {
-    round_number: roundNum,
-    match_type: document.querySelector('select[name="match_type"]').value
-  });
-  
-  userJourney.reshuffles++;
-  sessionStorage.setItem('lastAction', 'reshuffle_round');
-  sessionStorage.setItem('reshuffleRoundNum', roundNum);
-  
-  // Show loading state for the specific reshuffle button
-  const button = document.querySelector(`[data-round="${roundNum}"]`);
-  if (button) {
-    const originalText = button.innerHTML;
-    button.innerHTML = 'Reshuffling...';
-    button.disabled = true;
-  }
-  
-  // Mobile feedback
-  showMobileMessage(`Reshuffling Round ${roundNum}...`, 'info', 3000);
-  
-  saveScrollPosition();
-  const form = document.querySelector('form');
-  const hiddenInput = document.createElement('input');
-  hiddenInput.type = 'hidden';
-  hiddenInput.name = 'reshuffle_round';
-  hiddenInput.value = roundNum;
-  form.appendChild(hiddenInput);
-  form.submit();
-}
-
-// Player management functions with enhanced analytics
-function confirmRemovePlayer(playerName) {
-  if (confirm(`Remove ${playerName} from the session?`)) {
-    // Track player removal
-    trackFeatureUsage('remove_player', true, {
-      player_name: playerName.substring(0, 20), // Truncate for privacy
-      remaining_players: document.querySelectorAll('.player-card').length - 1
-    });
-    
-    sessionStorage.setItem('lastAction', 'remove_player');
-    
-    showMobileMessage(`Removing ${playerName}...`, 'info', 2000);
-    
-    const form = document.querySelector('form');
-    const hiddenInput = document.createElement('input');
-    hiddenInput.type = 'hidden';
-    hiddenInput.name = 'remove_player';
-    hiddenInput.value = playerName;
-    form.appendChild(hiddenInput);
-    form.submit();
-  } else {
-    // Track cancelled removal
-    trackTennisEvent('remove_player_cancelled', 'Player Management', 'user_cancelled_removal');
-  }
-}
-
-function confirmReset() {
-  if (confirm('This will remove all players and matches. Are you sure?')) {
-    const currentPlayers = document.querySelectorAll('.player-card').length;
-    const hasMatches = document.querySelector('#matches-section') !== null;
-    
-    // Track session reset
-    trackFeatureUsage('reset_session', true, {
-      players_removed: currentPlayers,
-      had_matches: hasMatches,
-      session_duration: Date.now() - userJourney.start_time
-    });
-    
-    sessionStorage.setItem('lastAction', 'reset');
-    
-    // Show loading state
-    const button = event.target;
-    const originalText = button.innerHTML;
-    button.innerHTML = 'Resetting...';
-    button.disabled = true;
-    
-    showMobileMessage('Clearing all data...', 'info', 3000);
-    
-    const form = document.querySelector('form');
-    const hiddenInput = document.createElement('input');
-    hiddenInput.type = 'hidden';
-    hiddenInput.name = 'reset';
-    hiddenInput.value = 'true';
-    form.appendChild(hiddenInput);
-    form.submit();
-  } else {
-    // Track cancelled reset
-    trackTennisEvent('reset_cancelled', 'Session Management', 'user_cancelled_reset');
-  }
-}
-
-// Enhanced success message tracking
-function checkForSuccessActions() {
-  // Check if we just completed an action by looking at form data or URL changes
-  const playerCount = document.querySelectorAll('.player-card').length;
-  const hasMatches = document.querySelector('#matches-section') !== null;
-  
-  // Show appropriate success messages based on page state
-  if (sessionStorage.getItem('lastAction')) {
-    const lastAction = sessionStorage.getItem('lastAction');
-    sessionStorage.removeItem('lastAction');
-    
-    switch(lastAction) {
-      case 'add_player':
-        userJourney.players_added++;
-        showMobileMessage('Player added successfully!', 'success');
-        trackEngagement('player_added', {player_count: playerCount});
-        break;
-      case 'remove_player':
-        showMobileMessage('Player removed successfully!', 'success');
-        trackEngagement('player_removed', {player_count: playerCount});
-        break;
-      case 'reshuffle_all':
-        showMobileMessage('All matches reshuffled successfully!', 'success');
-        trackEngagement('all_matches_reshuffled', {player_count: playerCount});
-        break;
-      case 'reshuffle_round':
-        const roundNum = sessionStorage.getItem('reshuffleRoundNum') || '';
-        sessionStorage.removeItem('reshuffleRoundNum');
-        showMobileMessage(`Round ${roundNum} reshuffled successfully!`, 'success');
-        trackEngagement('round_reshuffled', {round: roundNum, player_count: playerCount});
-        break;
-      case 'reset':
-        showMobileMessage('All data cleared successfully!', 'success');
-        trackEngagement('session_reset', {});
-        break;
-      case 'organize_matches':
-        showMobileMessage('Matches organized successfully!', 'success');
-        trackEngagement('matches_organized_success', {player_count: playerCount});
-        break;
-    }
-  }
-}
-
-// Initialize on page load with comprehensive analytics
-document.addEventListener('DOMContentLoaded', function() {
-  // Restore scroll position if returning from form submission
-  restoreScrollPosition();
-  
-  // Check for success actions
-  setTimeout(checkForSuccessActions, 100);
-  
-  // Initialize timer display if present
-  const timerDisplay = document.getElementById('main-timer-display');
-  if (timerDisplay) {
-    updateClockDisplay(timerDisplay);
-  }
-  
-  // Clear form inputs after successful submission
-  const urlParams = new URLSearchParams(window.location.search);
-  if (urlParams.get('success')) {
-    document.getElementById('playerName').value = '';
-    document.getElementById('playerGrade').value = '';
-    document.getElementById('playerMaxRounds').value = '';
-  }
-  
-  // Initialize max rounds dropdown
-  updateMaxRoundsOptions();
-  
-  // Update max rounds options when total rounds changes
-  const totalRoundsInput = document.getElementById('totalRounds');
-  if (totalRoundsInput) {
-    totalRoundsInput.addEventListener('change', updateMaxRoundsOptions);
-    totalRoundsInput.addEventListener('input', updateMaxRoundsOptions);
-  }
-  
-  // Initialize mobile features
-  initializeMobileFeatures();
-  
-  // Track successful page load
-  trackPerformance('page_load_complete', Date.now() - performance.navigationStart, 'full_page');
-  
-  // Track user's browser capabilities
-  trackTennisEvent('browser_capabilities', 'Technical', 'features_supported', 1, {
-    touch_support: 'ontouchstart' in window,
-    local_storage: typeof(Storage) !== "undefined",
-    fetch_support: typeof fetch !== 'undefined',
-    intersection_observer: typeof IntersectionObserver !== 'undefined'
-  });
-});
-
-// Prevent form submission on Enter key in player name field with analytics
-document.addEventListener('DOMContentLoaded', function() {
-  const playerNameInput = document.getElementById('playerName');
-  if (playerNameInput) {
-    playerNameInput.addEventListener('keypress', function(e) {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        trackTennisEvent('keyboard_shortcut', 'User Interface', 'enter_key_add_player');
-        if (validateAddPlayer()) {
-          sessionStorage.setItem('lastAction', 'add_player');
-          document.querySelector('button[name="add_player"]').click();
+        
+        .hero-title {
+            font-size: 3.5rem;
+            font-weight: 800;
+            line-height: 1.1;
+            margin-bottom: 1.5rem;
         }
-      }
-    });
-  }
-});
+        
+        .hero-subtitle {
+            font-size: 1.25rem;
+            font-weight: 400;
+            margin-bottom: 2.5rem;
+            opacity: 0.9;
+        }
+        
+        .btn-hero {
+            padding: 12px 32px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            border-radius: 8px;
+        }
+        
+        .feature-icon {
+            background: linear-gradient(135deg, #2563eb, #1d4ed8);
+            color: white;
+            width: 80px;
+            height: 80px;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1.5rem;
+        }
+        
+        .feature-card {
+            text-align: center;
+            padding: 2rem 1rem;
+        }
+        
+        .feature-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: #111827;
+        }
+        
+        .feature-text {
+            color: #6b7280;
+            font-size: 1rem;
+            line-height: 1.6;
+        }
+        
+        .testimonial-section {
+            background-color: #f8fafc;
+            padding: 80px 0;
+        }
+        
+        .testimonial-card {
+            background: white;
+            border-radius: 16px;
+            padding: 2rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            height: 100%;
+        }
+        
+        .testimonial-text {
+            font-style: italic;
+            font-size: 1.1rem;
+            line-height: 1.7;
+            margin-bottom: 1.5rem;
+            color: #374151;
+        }
+        
+        .testimonial-author {
+            font-weight: 600;
+            color: #2563eb;
+        }
+        
+        .section-title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            text-align: center;
+            margin-bottom: 3rem;
+            color: #111827;
+        }
+    </style>
+</head>
+<body>
+    <div class="hero-section">
+        <div class="container">
+            <div class="row align-items-center">
+                <div class="col-lg-6">
+                    <h1 class="hero-title">Stop using Apple Notes for your invoices</h1>
+                    <p class="hero-subtitle">
+                        CoachPay helps coaches create professional invoices, track payments, and get paid faster. 
+                        Say goodbye to spreadsheets and hello to streamlined billing.
+                    </p>
+                    <div class="d-flex gap-3 flex-wrap">
+                        <a href="{{ url_for('register') }}" class="btn btn-light btn-hero">
+                            <i class="bi bi-rocket-takeoff me-2"></i>Start Free Trial
+                        </a>
+                        <a href="{{ url_for('login') }}" class="btn btn-outline-light btn-hero">
+                            <i class="bi bi-box-arrow-in-right me-2"></i>Login
+                        </a>
+                    </div>
+                </div>
+                <div class="col-lg-6">
+                    <div class="text-center">
+                        <i class="bi bi-credit-card-2-front" style="font-size: 12rem; opacity: 0.8;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
-// Timer-specific clock display function (placeholder - would need implementation)
-function updateClockDisplay(display) {
-  const minutes = Math.floor(timeRemaining / 60);
-  const seconds = timeRemaining % 60;
-  display.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-}
+    <div class="container py-5">
+        <h2 class="section-title">Everything you need to manage invoices</h2>
+        <div class="row">
+            <div class="col-lg-4 mb-4">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="bi bi-receipt-cutoff" style="font-size: 2rem;"></i>
+                    </div>
+                    <h4 class="feature-title">Professional Invoices</h4>
+                    <p class="feature-text">
+                        Create polished invoices with automatic numbering, due dates, and client details. 
+                        No more manual tracking in notes.
+                    </p>
+                </div>
+            </div>
+            <div class="col-lg-4 mb-4">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="bi bi-eye" style="font-size: 2rem;"></i>
+                    </div>
+                    <h4 class="feature-title">Payment Tracking</h4>
+                    <p class="feature-text">
+                        See who's paid and who hasn't at a glance. Automatic overdue notifications 
+                        help you stay on top of payments.
+                    </p>
+                </div>
+            </div>
+            <div class="col-lg-4 mb-4">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="bi bi-shield-check" style="font-size: 2rem;"></i>
+                    </div>
+                    <h4 class="feature-title">Secure & Simple</h4>
+                    <p class="feature-text">
+                        Bank-level security with a clean, intuitive interface. 
+                        Built specifically for coaches who want simplicity.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
 
-// Add CSS for mobile animations and feedback
-const style = document.createElement('style');
-style.textContent = `
-  .mobile-pressed {
-    transform: scale(0.95) !important;
-    opacity: 0.8 !important;
-  }
-  
-  @keyframes slideInFromTop {
-    from {
-      opacity: 0;
-      transform: translateX(-50%) translateY(-20px);
-    }
-    to {
-      opacity: 1;
-      transform: translateX(-50%) translateY(0);
-    }
-  }
-  
-  .mobile-touch-target {
-    min-height: 48px !important;
-    touch-action: manipulation;
-  }
-  
-  @media (max-width: 768px) {
-    body {
-      height: calc(var(--vh, 1vh) * 100);
-    }
-    
-    .schedule-container {
-      scroll-behavior: smooth;
-    }
-  }
-  
-  /* Hide any remaining flash messages */
-  .flash-messages {
-    display: none !important;
-  }
-`;
-document.head.appendChild(style);
-</script>
-{% endblock %}
+    <div class="testimonial-section">
+        <div class="container">
+            <h2 class="section-title">What coaches are saying</h2>
+            <div class="row">
+                <div class="col-lg-4 mb-4">
+                    <div class="testimonial-card">
+                        <p class="testimonial-text">
+                            "I was using Apple Notes to track who paid for lessons. CoachPay has made my life so much easier - I can see everything in one place."
+                        </p>
+                        <div class="testimonial-author">Sarah M., Tennis Coach</div>
+                    </div>
+                </div>
+                <div class="col-lg-4 mb-4">
+                    <div class="testimonial-card">
+                        <p class="testimonial-text">
+                            "Finally, a simple solution that just works. No complicated features I don't need - just clean invoicing and payment tracking."
+                        </p>
+                        <div class="testimonial-author">James R., Football Coach</div>
+                    </div>
+                </div>
+                <div class="col-lg-4 mb-4">
+                    <div class="testimonial-card">
+                        <p class="testimonial-text">
+                            "The automatic overdue tracking has helped me get paid faster. I wish I'd found this sooner!"
+                        </p>
+                        <div class="testimonial-author">Emma T., Swimming Coach</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container py-5">
+        <div class="text-center">
+            <h2 class="section-title">Ready to streamline your invoicing?</h2>
+            <p class="lead mb-4">Join hundreds of coaches who've simplified their billing with CoachPay</p>
+            <a href="{{ url_for('register') }}" class="btn btn-primary btn-hero">
+                <i class="bi bi-rocket-takeoff me-2"></i>Get Started Free
+            </a>
+        </div>
+    </div>
+
+    <footer class="bg-dark text-light py-4 mt-5">
+        <div class="container text-center">
+            <p class="mb-0">&copy; 2025 CoachPay. Simple, secure invoice management for coaches.</p>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

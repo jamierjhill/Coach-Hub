@@ -1,5 +1,21 @@
-# Tennis Match Organizer - Enhanced Security Dependencies
-Flask==2.3.3
-Flask-WTF==1.1.1
+# Unified Coaches Hub - Requirements
+# Core Flask framework
+Flask==3.0.0
+Flask-SQLAlchemy==3.1.1
+Flask-WTF==1.2.1
+
+# Form handling and validation
+WTForms==3.1.1
+email-validator==2.1.0
+
+# Security
+Werkzeug==3.0.1
+
+# Production server
+gunicorn==21.2.0
+
+# Database support
+SQLAlchemy==2.0.23
+
+# Environment management
 python-dotenv==1.0.0
-WTForms==3.0.1

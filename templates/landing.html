@@ -1,0 +1,364 @@
+{% extends "base.html" %}
+
+{% block title %}Coaches Hub - Professional Tools for Coaches{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<div class="text-center py-5 mb-5">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-lg-6 text-lg-start">
+                <h1 class="display-4 fw-bold text-primary mb-4">
+                    Professional Tools for Tennis Coaches
+                </h1>
+                <p class="lead text-muted mb-4">
+                    Stop using Apple Notes and Excel. Manage your coaching business with professional invoice tracking and intelligent match organization - all in one secure platform.
+                </p>
+                <div class="d-flex gap-3 justify-content-center justify-content-lg-start flex-wrap">
+                    <a href="{{ url_for('register') }}" class="btn btn-primary btn-lg">
+                        <i class="bi bi-rocket-takeoff me-2"></i>Start Free Trial
+                    </a>
+                    <a href="{{ url_for('login') }}" class="btn btn-outline-primary btn-lg">
+                        <i class="bi bi-box-arrow-in-right me-2"></i>Login
+                    </a>
+                </div>
+            </div>
+            <div class="col-lg-6 mt-5 mt-lg-0">
+                <div class="position-relative">
+                    <!-- Hero illustration -->
+                    <div class="bg-primary bg-gradient rounded-4 p-5 text-white text-center">
+                        <i class="bi bi-trophy display-1 mb-3"></i>
+                        <h4>Coaches Hub</h4>
+                        <p class="mb-0">Invoice Management • Match Organization</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Features Section -->
+<div class="container py-5">
+    <div class="text-center mb-5">
+        <h2 class="display-5 fw-bold">Everything You Need to Run Your Coaching Business</h2>
+        <p class="lead text-muted">Trusted by tennis coaches to streamline their operations</p>
+    </div>
+    
+    <div class="row g-5">
+        <!-- Invoice Management -->
+        <div class="col-lg-6">
+            <div class="card h-100 border-0 shadow-sm">
+                <div class="card-body p-4">
+                    <div class="feature-icon bg-primary mb-4">
+                        <i class="bi bi-receipt-cutoff"></i>
+                    </div>
+                    <h3 class="h4 mb-3">Professional Invoice Management</h3>
+                    <p class="text-muted mb-4">
+                        Create professional invoices, track payments automatically, and never lose track of who owes you money. Say goodbye to Apple Notes and spreadsheets.
+                    </p>
+                    <ul class="list-unstyled">
+                        <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i>Automatic payment tracking</li>
+                        <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i>Professional invoice templates</li>
+                        <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i>Overdue notifications</li>
+                        <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i>Financial reporting</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Match Organization -->
+        <div class="col-lg-6">
+            <div class="card h-100 border-0 shadow-sm">
+                <div class="card-body p-4">
+                    <div class="feature-icon bg-success mb-4">
+                        <i class="bi bi-diagram-3"></i>
+                    </div>
+                    <h3 class="h4 mb-3">Smart Match Organization</h3>
+                    <p class="text-muted mb-4">
+                        Organize fair tennis matches instantly with our intelligent algorithm. Perfect for group sessions, tournaments, and training camps.
+                    </p>
+                    <ul class="list-unstyled">
+                        <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i>Grade-based fair matching</li>
+                        <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i>Singles & doubles support</li>
+                        <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i>Multiple courts management</li>
+                        <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i>CSV player import</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Testimonials Section -->
+<div class="bg-light py-5 my-5">
+    <div class="container">
+        <div class="text-center mb-5">
+            <h2 class="display-6 fw-bold">Trusted by Tennis Coaches</h2>
+            <p class="lead text-muted">See what coaches are saying about Coaches Hub</p>
+        </div>
+        
+        <div class="row g-4">
+            <div class="col-lg-4">
+                <div class="card border-0 h-100">
+                    <div class="card-body p-4">
+                        <div class="text-warning mb-3">
+                            <i class="bi bi-star-fill"></i>
+                            <i class="bi bi-star-fill"></i>
+                            <i class="bi bi-star-fill"></i>
+                            <i class="bi bi-star-fill"></i>
+                            <i class="bi bi-star-fill"></i>
+                        </div>
+                        <p class="mb-3">"I was using Apple Notes to track who paid for lessons. Coaches Hub has made my financial management so much easier - I can see everything in one place."</p>
+                        <div class="d-flex align-items-center">
+                            <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px;">
+                                <i class="bi bi-person"></i>
+                            </div>
+                            <div>
+                                <h6 class="mb-0">Sarah M.</h6>
+                                <small class="text-muted">Tennis Coach, London</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-lg-4">
+                <div class="card border-0 h-100">
+                    <div class="card-body p-4">
+                        <div class="text-warning mb-3">
+                            <i class="bi bi-star-fill"></i>
+                            <i class="bi bi-star-fill"></i>
+                            <i class="bi bi-star-fill"></i>
+                            <i class="bi bi-star-fill"></i>
+                            <i class="bi bi-star-fill"></i>
+                        </div>
+                        <p class="mb-3">"The match organizer is incredible. I can organize fair matches for 20 kids in seconds instead of spending 20 minutes with pen and paper."</p>
+                        <div class="d-flex align-items-center">
+                            <div class="rounded-circle bg-success text-white d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px;">
+                                <i class="bi bi-person"></i>
+                            </div>
+                            <div>
+                                <h6 class="mb-0">James R.</h6>
+                                <small class="text-muted">Head Coach, Surrey</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-lg-4">
+                <div class="card border-0 h-100">
+                    <div class="card-body p-4">
+                        <div class="text-warning mb-3">
+                            <i class="bi bi-star-fill"></i>
+                            <i class="bi bi-star-fill"></i>
+                            <i class="bi bi-star-fill"></i>
+                            <i class="bi bi-star-fill"></i>
+                            <i class="bi bi-star-fill"></i>
+                        </div>
+                        <p class="mb-3">"Finally, a simple solution that just works. No complicated features I don't need - just clean invoicing and automatic overdue tracking."</p>
+                        <div class="d-flex align-items-center">
+                            <div class="rounded-circle bg-warning text-white d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px;">
+                                <i class="bi bi-person"></i>
+                            </div>
+                            <div>
+                                <h6 class="mb-0">Emma T.</h6>
+                                <small class="text-muted">Private Coach, Manchester</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Benefits Section -->
+<div class="container py-5">
+    <div class="row align-items-center">
+        <div class="col-lg-6">
+            <h2 class="display-6 fw-bold mb-4">Why Coaches Choose Us</h2>
+            <div class="row g-4">
+                <div class="col-md-6">
+                    <div class="d-flex">
+                        <div class="flex-shrink-0">
+                            <div class="bg-primary text-white rounded d-flex align-items-center justify-content-center" style="width: 48px; height: 48px;">
+                                <i class="bi bi-shield-check"></i>
+                            </div>
+                        </div>
+                        <div class="ms-3">
+                            <h5>Secure & Reliable</h5>
+                            <p class="text-muted mb-0">Bank-level security for your financial data with automatic backups.</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-6">
+                    <div class="d-flex">
+                        <div class="flex-shrink-0">
+                            <div class="bg-success text-white rounded d-flex align-items-center justify-content-center" style="width: 48px; height: 48px;">
+                                <i class="bi bi-lightning"></i>
+                            </div>
+                        </div>
+                        <div class="ms-3">
+                            <h5>Lightning Fast</h5>
+                            <p class="text-muted mb-0">Create invoices in seconds and organize matches instantly.</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-6">
+                    <div class="d-flex">
+                        <div class="flex-shrink-0">
+                            <div class="bg-info text-white rounded d-flex align-items-center justify-content-center" style="width: 48px; height: 48px;">
+                                <i class="bi bi-phone"></i>
+                            </div>
+                        </div>
+                        <div class="ms-3">
+                            <h5>Mobile Optimized</h5>
+                            <p class="text-muted mb-0">Works perfectly on your phone, tablet, or computer.</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-6">
+                    <div class="d-flex">
+                        <div class="flex-shrink-0">
+                            <div class="bg-warning text-white rounded d-flex align-items-center justify-content-center" style="width: 48px; height: 48px;">
+                                <i class="bi bi-headset"></i>
+                            </div>
+                        </div>
+                        <div class="ms-3">
+                            <h5>Expert Support</h5>
+                            <p class="text-muted mb-0">Get help from coaches who understand your needs.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-6 mt-5 mt-lg-0">
+            <div class="text-center">
+                <div class="bg-gradient bg-primary rounded-4 p-5 text-white">
+                    <i class="bi bi-graph-up-arrow display-1 mb-3"></i>
+                    <h4>Save 5+ Hours Per Week</h4>
+                    <p class="mb-0">Automate your admin work and focus on what you love - coaching tennis!</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- CTA Section -->
+<div class="bg-primary text-white py-5">
+    <div class="container text-center">
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                <h2 class="display-6 fw-bold mb-4">Ready to Streamline Your Coaching Business?</h2>
+                <p class="lead mb-4">Join hundreds of tennis coaches who've simplified their operations with Coaches Hub</p>
+                <div class="d-flex gap-3 justify-content-center flex-wrap">
+                    <a href="{{ url_for('register') }}" class="btn btn-light btn-lg">
+                        <i class="bi bi-rocket-takeoff me-2"></i>Start Free Trial
+                    </a>
+                    <a href="#features" class="btn btn-outline-light btn-lg">
+                        <i class="bi bi-info-circle me-2"></i>Learn More
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Footer -->
+<footer class="bg-dark text-light py-5 mt-5">
+    <div class="container">
+        <div class="row g-4">
+            <div class="col-lg-6">
+                <div class="d-flex align-items-center mb-3">
+                    <i class="bi bi-trophy me-2 fs-4"></i>
+                    <h5 class="mb-0">Coaches Hub</h5>
+                </div>
+                <p class="text-muted">Professional tools for tennis coaches. Streamline your invoice management and match organization in one secure platform.</p>
+            </div>
+            <div class="col-lg-3">
+                <h6 class="mb-3">Features</h6>
+                <ul class="list-unstyled">
+                    <li class="mb-2"><a href="#" class="text-muted text-decoration-none">Invoice Management</a></li>
+                    <li class="mb-2"><a href="#" class="text-muted text-decoration-none">Match Organization</a></li>
+                    <li class="mb-2"><a href="#" class="text-muted text-decoration-none">Payment Tracking</a></li>
+                    <li class="mb-2"><a href="#" class="text-muted text-decoration-none">Financial Reports</a></li>
+                </ul>
+            </div>
+            <div class="col-lg-3">
+                <h6 class="mb-3">Support</h6>
+                <ul class="list-unstyled">
+                    <li class="mb-2"><a href="#" class="text-muted text-decoration-none">Help Center</a></li>
+                    <li class="mb-2"><a href="#" class="text-muted text-decoration-none">Contact Us</a></li>
+                    <li class="mb-2"><a href="#" class="text-muted text-decoration-none">Privacy Policy</a></li>
+                    <li class="mb-2"><a href="#" class="text-muted text-decoration-none">Terms of Service</a></li>
+                </ul>
+            </div>
+        </div>
+        <hr class="my-4">
+        <div class="text-center">
+            <p class="mb-0 text-muted">&copy; 2025 Coaches Hub. Professional tools for professional coaches.</p>
+        </div>
+    </div>
+</footer>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Smooth scrolling for anchor links
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener('click', function (e) {
+            e.preventDefault();
+            const target = document.querySelector(this.getAttribute('href'));
+            if (target) {
+                target.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'start'
+                });
+            }
+        });
+    });
+    
+    // Add entrance animations
+    const observerOptions = {
+        threshold: 0.1,
+        rootMargin: '0px 0px -50px 0px'
+    };
+    
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.style.opacity = '1';
+                entry.target.style.transform = 'translateY(0)';
+            }
+        });
+    }, observerOptions);
+    
+    // Observe cards and sections for animation
+    document.querySelectorAll('.card, .feature-icon').forEach(el => {
+        el.style.opacity = '0';
+        el.style.transform = 'translateY(20px)';
+        el.style.transition = 'all 0.6s ease';
+        observer.observe(el);
+    });
+    
+    // Add hover effects to feature cards
+    document.querySelectorAll('.card').forEach(card => {
+        card.addEventListener('mouseenter', function() {
+            this.style.transform = 'translateY(-5px)';
+            this.style.transition = 'all 0.3s ease';
+        });
+        
+        card.addEventListener('mouseleave', function() {
+            this.style.transform = 'translateY(0)';
+        });
+    });
+});
+</script>
+{% endblock %}

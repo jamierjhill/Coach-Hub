@@ -1,0 +1,128 @@
+<!-- templates/edit_invoice.html -->
+{% extends "base.html" %}
+{% block title %}Edit Invoice {{ invoice.invoice_number }}{% endblock %}
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h2 class="fw-bold"><i class="bi bi-pencil"></i> Edit Invoice {{ invoice.invoice_number }}</h2>
+        <p class="text-muted">Update the details for this invoice</p>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-body">
+                <form method="POST">
+                    {{ form.hidden_tag() }}
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            {{ form.student_name.label(class="form-label") }}
+                            {{ form.student_name(class="form-control", placeholder="e.g., John Smith") }}
+                            {% if form.student_name.errors %}
+                                <div class="text-danger small">
+                                    {% for error in form.student_name.errors %}{{ error }}{% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            {{ form.student_email.label(class="form-label") }}
+                            {{ form.student_email(class="form-control", placeholder="john@example.com") }}
+                            <div class="form-text">Optional - for future email reminders</div>
+                            {% if form.student_email.errors %}
+                                <div class="text-danger small">
+                                    {% for error in form.student_email.errors %}{{ error }}{% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            {{ form.amount.label(class="form-label") }}
+                            <div class="input-group">
+                                <span class="input-group-text">£</span>
+                                {{ form.amount(class="form-control", step="0.01", placeholder="50.00") }}
+                            </div>
+                            {% if form.amount.errors %}
+                                <div class="text-danger small">
+                                    {% for error in form.amount.errors %}{{ error }}{% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            {{ form.due_date.label(class="form-label") }}
+                            {{ form.due_date(class="form-control") }}
+                            <div class="form-text">When payment is due</div>
+                            {% if form.due_date.errors %}
+                                <div class="text-danger small">
+                                    {% for error in form.due_date.errors %}{{ error }}{% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        {{ form.description.label(class="form-label") }}
+                        {{ form.description(class="form-control", rows="3", placeholder="e.g., Tennis coaching sessions - January 2025 (4 x 1-hour sessions)") }}
+                        <div class="form-text">Describe the coaching services provided</div>
+                        {% if form.description.errors %}
+                            <div class="text-danger small">
+                                {% for error in form.description.errors %}{{ error }}{% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-save"></i> Update Invoice
+                        </button>
+                        <a href="{{ url_for('view_invoice', invoice_id=invoice.id) }}" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-left"></i> Back to Invoice
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-body">
+                <h5><i class="bi bi-info-circle"></i> Current Status</h5>
+                <div class="mb-3">
+                    <strong>Invoice #:</strong> {{ invoice.invoice_number }}
+                </div>
+                <div class="mb-3">
+                    <strong>Status:</strong>
+                    {% if invoice.status == 'paid' %}
+                        <span class="badge bg-success">Paid</span>
+                    {% elif invoice.status == 'overdue' %}
+                        <span class="badge bg-danger">Overdue</span>
+                    {% else %}
+                        <span class="badge bg-warning text-dark">Pending</span>
+                    {% endif %}
+                </div>
+                <div class="mb-3">
+                    <strong>Created:</strong> {{ invoice.created_at.strftime('%d/%m/%Y') }}
+                </div>
+                {% if invoice.paid_at %}
+                <div class="mb-3">
+                    <strong>Paid:</strong> {{ invoice.paid_at.strftime('%d/%m/%Y') }}
+                </div>
+                {% endif %}
+
+                {% if invoice.status == 'paid' %}
+                <div class="alert alert-warning">
+                    <i class="bi bi-exclamation-triangle"></i>
+                    <strong>Note:</strong> This invoice has been marked as paid. Editing may affect your records.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

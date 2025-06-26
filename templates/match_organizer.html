@@ -1,0 +1,328 @@
+{% extends "base.html" %}
+
+{% block title %}Tennis Match Organizer - Coaches Hub{% endblock %}
+
+{% block content %}
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h1 class="fw-bold">Tennis Match Organizer</h1>
+      <p class="text-muted mb-0">Create fair and balanced tennis matches in seconds</p>
+    </div>
+    <div>
+      <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i> Back to Dashboard
+      </a>
+    </div>
+  </div>
+
+  <form method="POST" action="{{ url_for('match_organizer') }}" enctype="multipart/form-data">
+    {{ csrf_token() }}
+    
+    <!-- Session Setup -->
+    <div class="card mb-4">
+      <div class="card-body">
+        <h4 class="card-title"><i class="bi bi-gear"></i> Setup</h4>
+        <div class="row g-4">
+          <div class="col-md-4">
+            <label class="form-label">Courts</label>
+            <div class="input-group">
+              <span class="input-group-text"><i class="bi bi-building"></i></span>
+              <input type="number" class="form-control" name="courts" min="1" max="20" value="{{ courts }}" required>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Rounds</label>
+            <div class="input-group">
+              <span class="input-group-text"><i class="bi bi-arrow-repeat"></i></span>
+              <input type="number" class="form-control" name="num_matches" min="1" max="10" value="{{ num_matches }}" required>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Format</label>
+            <div class="input-group">
+              <span class="input-group-text"><i class="bi bi-tennis"></i></span>
+              <select class="form-control" name="match_type" required>
+                <option value="singles" {% if match_type == "singles" %}selected{% endif %}>Singles</option>
+                <option value="doubles" {% if match_type == "doubles" %}selected{% endif %}>Doubles</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Player Management -->
+    <div class="card mb-4">
+      <div class="card-body">
+        <h4 class="card-title"><i class="bi bi-people"></i> Players <span class="badge bg-primary">{{ players|length }}</span></h4>
+        
+        <!-- Add Player -->
+        <div class="row g-3 align-items-end mb-4 p-3 bg-light rounded">
+          <div class="col-md-4">
+            <label class="form-label">Name</label>
+            <input type="text" name="name" class="form-control" placeholder="Enter player name" 
+                   maxlength="50" pattern="[a-zA-Z0-9\s\-']+" 
+                   title="Only letters, numbers, spaces, hyphens and apostrophes allowed">
+          </div>
+          <div class="col-md-2">
+            <label class="form-label">Grade</label>
+            <select name="grade" class="form-control" required>
+              <option value="">Select</option>
+              <option value="1">1 (Strongest)</option>
+              <option value="2">2 (Strong)</option>
+              <option value="3">3 (Medium)</option>
+              <option value="4">4 (Beginner)</option>
+            </select>
+          </div>
+          <div class="col-md-2">
+            <label class="form-label">Max Rounds</label>
+            <select name="max_rounds" class="form-control">
+              <option value="">All rounds</option>
+              <option value="1">1 round only</option>
+              <option value="2">2 rounds max</option>
+              <option value="3">3 rounds max</option>
+              <option value="4">4 rounds max</option>
+              <option value="5">5 rounds max</option>
+            </select>
+          </div>
+          <div class="col-md-4">
+            <button type="submit" name="add_player" value="true" class="btn btn-primary w-100">
+              <i class="bi bi-plus-circle"></i> Add Player
+            </button>
+          </div>
+        </div>
+
+        <!-- CSV Upload -->
+        <div class="row g-3 align-items-end mb-4 p-3 bg-light rounded">
+          <div class="col-md-8">
+            <label class="form-label">Upload CSV File</label>
+            <input type="file" name="csv_file" class="form-control" accept=".csv">
+            <div class="form-text">CSV should have columns: name, grade, max_rounds (optional)</div>
+          </div>
+          <div class="col-md-4">
+            <button type="submit" name="upload_csv" value="true" class="btn btn-outline-secondary w-100">
+              <i class="bi bi-upload"></i> Upload CSV
+            </button>
+          </div>
+        </div>
+
+        <!-- Error Display -->
+        {% if error %}
+          <div class="alert alert-danger">
+            <i class="bi bi-exclamation-triangle"></i> {{ error }}
+          </div>
+        {% endif %}
+
+        <!-- Players List -->
+        {% if players %}
+          <div class="row g-3">
+            {% for player in players %}
+              <div class="col-md-6 col-lg-4">
+                <div class="card border">
+                  <div class="card-body p-3">
+                    <div class="d-flex justify-content-between align-items-start">
+                      <div>
+                        <h6 class="card-title mb-1">{{ player.name }}</h6>
+                        <div class="text-muted small">Grade {{ player.grade }}</div>
+                        {% if player.max_rounds is defined %}
+                          <span class="badge bg-warning text-dark small">{{ player.max_rounds }} round{{ 's' if player.max_rounds != 1 else '' }} max</span>
+                        {% endif %}
+                      </div>
+                      <button type="submit" name="remove_player" value="{{ player.name }}" 
+                              class="btn btn-outline-danger btn-sm"
+                              onclick="return confirm('Remove {{ player.name }}?')">
+                        <i class="bi bi-trash"></i>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="text-center py-4">
+            <i class="bi bi-people display-4 text-muted"></i>
+            <h5 class="text-muted mt-3">No Players Added</h5>
+            <p class="text-muted">Add players to get started organizing matches</p>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+    
+    <!-- Action Controls -->
+    {% if players %}
+    <div class="card mb-4">
+      <div class="card-body text-center">
+        <div class="d-flex gap-3 justify-content-center flex-wrap">
+          <button type="submit" name="organize_matches" value="true" class="btn btn-primary btn-lg">
+            <i class="bi bi-diagram-3"></i> Organize Matches
+          </button>
+          <button type="submit" name="reshuffle" value="true" class="btn btn-outline-primary">
+            <i class="bi bi-shuffle"></i> Reshuffle All
+          </button>
+          <button type="submit" name="reset" value="true" class="btn btn-outline-danger"
+                  onclick="return confirm('This will remove all players and matches. Continue?')">
+            <i class="bi bi-arrow-clockwise"></i> Reset
+          </button>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Match Schedule -->
+    {% if matchups and rounds %}
+    <div class="card">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+          <h4 class="card-title"><i class="bi bi-calendar-event"></i> Match Schedule</h4>
+        </div>
+
+        {% for round_num, matches in rounds.items() %}
+          <div class="mb-4">
+            <div class="d-flex justify-content-between align-items-center bg-primary text-white p-3 rounded mb-3">
+              <h5 class="mb-0">Round {{ round_num }}</h5>
+              <button type="submit" name="reshuffle_round" value="{{ round_num }}" 
+                      class="btn btn-light btn-sm"
+                      onclick="return confirm('Reshuffle Round {{ round_num }}?')">
+                <i class="bi bi-shuffle"></i> Reshuffle
+              </button>
+            </div>
+            
+            <div class="row g-3">
+              {% for court_num, match in matches %}
+                <div class="col-lg-6">
+                  <div class="card border-light">
+                    <div class="card-body">
+                      <h6 class="card-title text-muted small">COURT {{ court_num }}</h6>
+                      <div class="match-players">
+                        {% if match|length == 2 %}
+                          <!-- Singles Match -->
+                          <div class="d-flex justify-content-between align-items-center">
+                            <div class="text-center flex-fill">
+                              <div class="fw-bold">{{ match[0].name }}</div>
+                              <small class="text-muted">Grade {{ match[0].grade }}</small>
+                            </div>
+                            <div class="mx-3">
+                              <span class="badge bg-primary">VS</span>
+                            </div>
+                            <div class="text-center flex-fill">
+                              <div class="fw-bold">{{ match[1].name }}</div>
+                              <small class="text-muted">Grade {{ match[1].grade }}</small>
+                            </div>
+                          </div>
+                        {% else %}
+                          <!-- Doubles Match -->
+                          <div class="d-flex justify-content-between align-items-center">
+                            <div class="text-center flex-fill">
+                              <div class="fw-bold">{{ match[0].name }} & {{ match[1].name }}</div>
+                              <small class="text-muted">Avg Grade {{ ((match[0].grade + match[1].grade) / 2) | round(1) }}</small>
+                            </div>
+                            <div class="mx-3">
+                              <span class="badge bg-primary">VS</span>
+                            </div>
+                            <div class="text-center flex-fill">
+                              <div class="fw-bold">{{ match[2].name }} & {{ match[3].name }}</div>
+                              <small class="text-muted">Avg Grade {{ ((match[2].grade + match[3].grade) / 2) | round(1) }}</small>
+                            </div>
+                          </div>
+                        {% endif %}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              {% endfor %}
+            </div>
+            
+            <!-- Players sitting out -->
+            {% set playing_players = [] %}
+            {% for court_num, match in matches %}
+              {% for player in match %}
+                {% set _ = playing_players.append(player.name) %}
+              {% endfor %}
+            {% endfor %}
+            
+            {% set sitting_out = [] %}
+            {% for player in players %}
+              {% if player.name not in playing_players %}
+                {% set _ = sitting_out.append(player.name) %}
+              {% endif %}
+            {% endfor %}
+            
+            {% if sitting_out %}
+              <div class="alert alert-info mt-3">
+                <i class="bi bi-person-x"></i> <strong>Sitting out:</strong> {{ sitting_out|join(', ') }}
+              </div>
+            {% endif %}
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    {% elif players %}
+    <div class="card">
+      <div class="card-body text-center py-5">
+        <i class="bi bi-diagram-3 display-4 text-muted"></i>
+        <h5 class="text-muted mt-3">Ready to Organize</h5>
+        <p class="text-muted">Click "Organize Matches" to create your schedule</p>
+        {% if players|length < (2 if match_type == "singles" else 4) %}
+          <div class="alert alert-warning mt-3">
+            <i class="bi bi-exclamation-triangle"></i>
+            Need at least {{ 2 if match_type == "singles" else 4 }} players for {{ match_type }} matches
+          </div>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+  </form>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Auto-hide alerts after 5 seconds
+    const alerts = document.querySelectorAll('.alert-dismissible');
+    alerts.forEach(alert => {
+        setTimeout(() => {
+            const closeBtn = alert.querySelector('.btn-close');
+            if (closeBtn) closeBtn.click();
+        }, 5000);
+    });
+    
+    // Add loading states to action buttons
+    const actionButtons = document.querySelectorAll('button[type="submit"]');
+    actionButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            if (this.name === 'organize_matches' || this.name === 'reshuffle') {
+                this.innerHTML = '<i class="bi bi-hourglass-split"></i> Processing...';
+                this.disabled = true;
+            }
+        });
+    });
+    
+    // Prevent form submission on Enter key in player name field
+    const playerNameInput = document.querySelector('input[name="name"]');
+    if (playerNameInput) {
+        playerNameInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                const addButton = document.querySelector('button[name="add_player"]');
+                if (addButton) addButton.click();
+            }
+        });
+    }
+    
+    // Clear form after successful submission
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('success')) {
+        const nameInput = document.querySelector('input[name="name"]');
+        const gradeInput = document.querySelector('select[name="grade"]');
+        const maxRoundsInput = document.querySelector('select[name="max_rounds"]');
+        
+        if (nameInput) nameInput.value = '';
+        if (gradeInput) gradeInput.value = '';
+        if (maxRoundsInput) maxRoundsInput.value = '';
+    }
+});
+</script>
+{% endblock %}

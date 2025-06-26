@@ -1,0 +1,545 @@
+<!-- templates/create_invoice.html -->
+{% extends "base.html" %}
+{% block title %}
+    {% if template %}
+        Create Invoice from Template
+    {% else %}
+        Create Invoice
+    {% endif %}
+{% endblock %}
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h2 class="fw-bold">
+            <i class="bi bi-plus-circle"></i> 
+            {% if template %}
+                Create Invoice from Template: {{ template.name }}
+            {% else %}
+                Create New Invoice
+            {% endif %}
+        </h2>
+        <p class="text-muted">
+            {% if template %}
+                Using template to generate a professional invoice
+            {% else %}
+                Generate a professional invoice for your coaching services
+            {% endif %}
+        </p>
+    </div>
+</div>
+
+<!-- Template Selection Section (only show if not already using a template) -->
+{% if not template and templates %}
+<div class="row">
+    <div class="col-lg-8 mx-auto">
+        <div class="card mb-4">
+            <div class="card-body">
+                <div class="form-section">
+                    <h5 class="text-primary mb-3">
+                        <i class="bi bi-lightning"></i> Start with Template
+                    </h5>
+                    <p class="text-muted mb-3">Save time by using one of your existing templates</p>
+                    
+                    <!-- Desktop Template Selection -->
+                    <div class="d-none d-md-block">
+                        <div class="row">
+                            {% for tmpl in templates[:3] %}
+                            <div class="col-md-4 mb-3">
+                                <div class="card bg-light border-2 template-card h-100" style="cursor: pointer;" onclick="useTemplate({{ tmpl.id }})">
+                                    <div class="card-body text-center p-3">
+                                        <div class="mb-2">
+                                            <i class="bi bi-file-text text-primary" style="font-size: 1.5rem;"></i>
+                                        </div>
+                                        <h6 class="card-title mb-2">{{ tmpl.name }}</h6>
+                                        <div class="text-success fw-bold mb-1">£{{ "%.2f"|format(tmpl.amount) }}</div>
+                                        <small class="text-muted d-block mb-3">Due in {{ tmpl.default_due_days }} days</small>
+                                        <button type="button" class="btn btn-outline-primary btn-sm w-100">
+                                            <i class="bi bi-lightning"></i> Use Template
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    
+                    <!-- Mobile Template Selection -->
+                    <div class="d-md-none">
+                        {% for tmpl in templates[:3] %}
+                        <div class="card bg-light border template-card mb-3" style="cursor: pointer;" onclick="useTemplate({{ tmpl.id }})">
+                            <div class="card-body">
+                                <div class="d-flex align-items-center">
+                                    <div class="me-3">
+                                        <i class="bi bi-file-text text-primary" style="font-size: 1.5rem;"></i>
+                                    </div>
+                                    <div class="flex-grow-1">
+                                        <h6 class="mb-1">{{ tmpl.name }}</h6>
+                                        <div class="d-flex align-items-center gap-2">
+                                            <span class="text-success fw-bold">£{{ "%.2f"|format(tmpl.amount) }}</span>
+                                            <span class="text-muted">•</span>
+                                            <small class="text-muted">{{ tmpl.default_due_days }} days</small>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <button type="button" class="btn btn-outline-primary btn-sm">
+                                            <i class="bi bi-lightning"></i> Use
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    
+                    <div class="d-flex justify-content-between align-items-center mt-3">
+                        {% if templates|length > 3 %}
+                        <a href="{{ url_for('templates') }}" class="btn btn-outline-secondary btn-sm">
+                            <i class="bi bi-file-text"></i> View All {{ templates|length }} Templates
+                        </a>
+                        {% else %}
+                        <div></div>
+                        {% endif %}
+                        
+                        <button type="button" class="btn btn-link btn-sm text-muted" onclick="toggleTemplateSection()">
+                            <i class="bi bi-x"></i> Skip templates
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Template Info Banner -->
+{% if template %}
+<div class="alert alert-info mb-4">
+    <div class="d-flex align-items-center">
+        <i class="bi bi-file-text me-2"></i>
+        <div>
+            <strong>Using Template:</strong> {{ template.name }}
+            <br>
+            <small>Amount: £{{ "%.2f"|format(template.amount) }} • Due in {{ template.default_due_days }} days</small>
+        </div>
+        <div class="ms-auto">
+            <a href="{{ url_for('create_invoice') }}" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-x"></i> Clear Template
+            </a>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<div class="row">
+    <div class="col-lg-8 mx-auto">
+        <div class="card" id="invoiceFormCard">
+            <div class="card-body">
+                <form method="POST" id="invoiceForm" 
+                      {% if template %}action="{{ url_for('create_invoice_from_template', template_id=template.id) }}"{% endif %}>
+                    {{ form.hidden_tag() }}
+                    
+                    <!-- Progress indicator for mobile -->
+                    <div class="d-md-none mb-4">
+                        <div class="progress" style="height: 4px;">
+                            <div class="progress-bar bg-primary" role="progressbar" style="width: 0%" id="formProgress"></div>
+                        </div>
+                        <small class="text-muted">Complete the form below</small>
+                    </div>
+                    
+                    <!-- Student Information Section -->
+                    <div class="form-section mb-4">
+                        <h5 class="text-primary mb-3">
+                            <i class="bi bi-person"></i> Student Information
+                        </h5>
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                {{ form.student_name.label(class="form-label") }}
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="bi bi-person"></i></span>
+                                    {{ form.student_name(class="form-control", placeholder="e.g., John Smith", autocomplete="name") }}
+                                </div>
+                                {% if form.student_name.errors %}
+                                    <div class="text-danger small mt-1">
+                                        {% for error in form.student_name.errors %}{{ error }}{% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                {{ form.student_email.label(class="form-label") }}
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="bi bi-envelope"></i></span>
+                                    {{ form.student_email(class="form-control", placeholder="john@example.com", autocomplete="email") }}
+                                </div>
+                                <div class="form-text">Optional - for future email reminders</div>
+                                {% if form.student_email.errors %}
+                                    <div class="text-danger small mt-1">
+                                        {% for error in form.student_email.errors %}{{ error }}{% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Invoice Details Section -->
+                    <div class="form-section mb-4">
+                        <h5 class="text-primary mb-3">
+                            <i class="bi bi-receipt"></i> Invoice Details
+                        </h5>
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                {{ form.amount.label(class="form-label") }}
+                                <div class="input-group">
+                                    <span class="input-group-text">£</span>
+                                    {{ form.amount(class="form-control", step="0.01", placeholder="50.00", inputmode="decimal") }}
+                                </div>
+                                <!-- Quick amount buttons for mobile -->
+                                <div class="d-md-none mt-2">
+                                    <div class="btn-group btn-group-sm" role="group">
+                                        <button type="button" class="btn btn-outline-secondary quick-amount" data-amount="25">£25</button>
+                                        <button type="button" class="btn btn-outline-secondary quick-amount" data-amount="50">£50</button>
+                                        <button type="button" class="btn btn-outline-secondary quick-amount" data-amount="75">£75</button>
+                                        <button type="button" class="btn btn-outline-secondary quick-amount" data-amount="100">£100</button>
+                                    </div>
+                                </div>
+                                {% if form.amount.errors %}
+                                    <div class="text-danger small mt-1">
+                                        {% for error in form.amount.errors %}{{ error }}{% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                {{ form.due_date.label(class="form-label") }}
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="bi bi-calendar"></i></span>
+                                    {{ form.due_date(class="form-control") }}
+                                </div>
+                                <div class="form-text">When payment is due</div>
+                                {% if form.due_date.errors %}
+                                    <div class="text-danger small mt-1">
+                                        {% for error in form.due_date.errors %}{{ error }}{% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <!-- Quick due date options -->
+                        <div class="mb-3">
+                            <label class="form-label">Quick Due Date Options:</label>
+                            <div class="d-flex gap-2 flex-wrap">
+                                <button type="button" class="btn btn-outline-primary btn-sm" onclick="setDueDate(7)">
+                                    7 Days
+                                </button>
+                                <button type="button" class="btn btn-outline-primary btn-sm" onclick="setDueDate(14)">
+                                    14 Days
+                                </button>
+                                <button type="button" class="btn btn-outline-primary btn-sm" onclick="setDueDate(30)">
+                                    30 Days
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Service Description Section -->
+                    <div class="form-section mb-4">
+                        <h5 class="text-primary mb-3">
+                            <i class="bi bi-card-text"></i> Service Description
+                        </h5>
+                        
+                        <div class="mb-3">
+                            {{ form.description.label(class="form-label") }}
+                            {{ form.description(class="form-control", rows="4", placeholder="e.g., Tennis coaching sessions - January 2025 (4 x 1-hour sessions)") }}
+                            <div class="form-text">Describe the coaching services provided</div>
+                            
+                            <!-- Quick description templates for mobile (only show if not using a template) -->
+                            {% if not template %}
+                            <div class="d-md-none mt-2">
+                                <label class="form-label small">Quick Templates:</label>
+                                <div class="d-grid gap-1">
+                                    <button type="button" class="btn btn-outline-secondary btn-sm text-start quick-desc" 
+                                            data-desc="Tennis coaching sessions - [Month] (4 x 1-hour sessions)">
+                                        <i class="bi bi-lightning"></i> Tennis Sessions (Monthly)
+                                    </button>
+                                    <button type="button" class="btn btn-outline-secondary btn-sm text-start quick-desc" 
+                                            data-desc="Private tennis lesson - 1 hour session">
+                                        <i class="bi bi-lightning"></i> Single Private Lesson
+                                    </button>
+                                    <button type="button" class="btn btn-outline-secondary btn-sm text-start quick-desc" 
+                                            data-desc="Group tennis coaching - Weekly sessions">
+                                        <i class="bi bi-lightning"></i> Group Sessions
+                                    </button>
+                                </div>
+                            </div>
+                            {% endif %}
+                            
+                            {% if form.description.errors %}
+                                <div class="text-danger small mt-1">
+                                    {% for error in form.description.errors %}{{ error }}{% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <!-- Action Buttons -->
+                    <div class="d-flex gap-2 flex-column flex-sm-row">
+                        <button type="submit" class="btn btn-primary flex-fill" id="submitBtn">
+                            <i class="bi bi-receipt"></i> 
+                            {% if template %}
+                                Create Invoice from Template
+                            {% else %}
+                                Create Invoice
+                            {% endif %}
+                        </button>
+                        <a href="{{ url_for('templates') if template else url_for('invoices') }}" class="btn btn-outline-secondary flex-fill">
+                            <i class="bi bi-arrow-left"></i> Cancel
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <!-- Mobile Preview Card -->
+        <div class="card mt-3 d-md-none" id="previewCard" style="display: none !important;">
+            <div class="card-header bg-light">
+                <h6 class="mb-0"><i class="bi bi-eye"></i> Preview</h6>
+            </div>
+            <div class="card-body" id="previewContent">
+                <!-- Preview content will be populated by JavaScript -->
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Template selection function
+function useTemplate(templateId) {
+    // Add visual feedback
+    const templateCard = event.currentTarget;
+    templateCard.style.transform = 'scale(0.98)';
+    templateCard.style.opacity = '0.8';
+    
+    // Haptic feedback
+    if ('vibrate' in navigator) {
+        navigator.vibrate(50);
+    }
+    
+    // Redirect to template usage
+    setTimeout(() => {
+        window.location.href = '/use-template/' + templateId;
+    }, 150);
+}
+
+// Toggle template selection section
+function toggleTemplateSection() {
+    const templateSection = document.querySelector('.card:first-child');
+    const formCard = document.getElementById('invoiceFormCard');
+    
+    if (templateSection) {
+        templateSection.style.transition = 'all 0.3s ease';
+        templateSection.style.opacity = '0';
+        templateSection.style.transform = 'translateY(-20px)';
+        
+        setTimeout(() => {
+            templateSection.style.display = 'none';
+            formCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 300);
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('invoiceForm');
+    const progressBar = document.getElementById('formProgress');
+    const previewCard = document.getElementById('previewCard');
+    const previewContent = document.getElementById('previewContent');
+    
+    // Add hover effects to template cards
+    document.querySelectorAll('.template-card').forEach(card => {
+        card.addEventListener('mouseenter', function() {
+            this.style.transform = 'translateY(-1px)';
+            this.style.transition = 'all 0.2s ease';
+            this.classList.add('border-primary');
+        });
+        
+        card.addEventListener('mouseleave', function() {
+            this.style.transform = 'translateY(0)';
+            this.classList.remove('border-primary');
+        });
+        
+        // Touch feedback for mobile
+        card.addEventListener('touchstart', function() {
+            this.style.transform = 'scale(0.98)';
+            this.style.opacity = '0.9';
+        });
+        
+        card.addEventListener('touchend', function() {
+            setTimeout(() => {
+                this.style.transform = '';
+                this.style.opacity = '';
+            }, 100);
+        });
+    });
+    
+    // Form progress tracking
+    function updateProgress() {
+        const inputs = form.querySelectorAll('input[required], textarea[required]');
+        let filled = 0;
+        
+        inputs.forEach(input => {
+            if (input.value.trim() !== '') {
+                filled++;
+            }
+        });
+        
+        const progress = (filled / inputs.length) * 100;
+        if (progressBar) {
+            progressBar.style.width = progress + '%';
+        }
+        
+        // Show preview when form is mostly complete
+        if (progress > 60 && window.innerWidth < 768) {
+            updatePreview();
+            previewCard.style.display = 'block';
+        } else if (previewCard) {
+            previewCard.style.display = 'none';
+        }
+    }
+    
+    // Update preview content
+    function updatePreview() {
+        const studentName = document.querySelector('input[name="student_name"]').value;
+        const amount = document.querySelector('input[name="amount"]').value;
+        const dueDate = document.querySelector('input[name="due_date"]').value;
+        const description = document.querySelector('textarea[name="description"]').value;
+        
+        if (studentName && amount) {
+            previewContent.innerHTML = `
+                <div class="d-flex justify-content-between mb-2">
+                    <strong>Student:</strong>
+                    <span>${studentName}</span>
+                </div>
+                <div class="d-flex justify-content-between mb-2">
+                    <strong>Amount:</strong>
+                    <span class="text-success">£${amount}</span>
+                </div>
+                ${dueDate ? `
+                <div class="d-flex justify-content-between mb-2">
+                    <strong>Due Date:</strong>
+                    <span>${new Date(dueDate).toLocaleDateString()}</span>
+                </div>
+                ` : ''}
+                ${description ? `
+                <div class="mt-2">
+                    <strong>Description:</strong>
+                    <p class="mb-0 small text-muted">${description}</p>
+                </div>
+                ` : ''}
+            `;
+        }
+    }
+    
+    // Quick amount buttons
+    document.querySelectorAll('.quick-amount').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const amount = this.dataset.amount;
+            document.querySelector('input[name="amount"]').value = amount;
+            updateProgress();
+            
+            // Visual feedback
+            document.querySelectorAll('.quick-amount').forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+        });
+    });
+    
+    // Quick description templates
+    document.querySelectorAll('.quick-desc').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const desc = this.dataset.desc;
+            const textarea = document.querySelector('textarea[name="description"]');
+            textarea.value = desc;
+            textarea.focus();
+            updateProgress();
+            
+            // Visual feedback
+            this.classList.add('btn-primary');
+            this.classList.remove('btn-outline-secondary');
+            setTimeout(() => {
+                this.classList.remove('btn-primary');
+                this.classList.add('btn-outline-secondary');
+            }, 500);
+        });
+    });
+    
+    // Form validation and progress tracking
+    form.addEventListener('input', updateProgress);
+    form.addEventListener('change', updateProgress);
+    
+    // Initial progress check
+    updateProgress();
+    
+    // Form submission handling
+    form.addEventListener('submit', function() {
+        const submitBtn = document.getElementById('submitBtn');
+        submitBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Creating Invoice...';
+        submitBtn.disabled = true;
+        
+        // Haptic feedback on supported devices
+        if ('vibrate' in navigator) {
+            navigator.vibrate(50);
+        }
+    });
+    
+    // Auto-focus first empty field on mobile
+    if (window.innerWidth < 768) {
+        const firstEmpty = form.querySelector('input:not([value]), input[value=""]');
+        if (firstEmpty) {
+            setTimeout(() => firstEmpty.focus(), 300);
+        }
+    }
+});
+
+// Due date helper function
+function setDueDate(days) {
+    const today = new Date();
+    const dueDate = new Date(today.getTime() + (days * 24 * 60 * 60 * 1000));
+    const dueDateString = dueDate.toISOString().split('T')[0];
+    document.querySelector('input[name="due_date"]').value = dueDateString;
+    
+    // Update progress
+    const event = new Event('input', { bubbles: true });
+    document.querySelector('input[name="due_date"]').dispatchEvent(event);
+    
+    // Visual feedback for mobile
+    const buttons = document.querySelectorAll('[onclick*="setDueDate"]');
+    buttons.forEach(btn => {
+        btn.classList.remove('btn-primary');
+        btn.classList.add('btn-outline-primary');
+    });
+    
+    event.target = null;
+    buttons.forEach(btn => {
+        if (btn.onclick && btn.onclick.toString().includes(days)) {
+            btn.classList.add('btn-primary');
+            btn.classList.remove('btn-outline-primary');
+        }
+    });
+}
+
+// Set default due date - either from template or 14 days from now
+document.addEventListener('DOMContentLoaded', function() {
+    const dueDateInput = document.querySelector('input[name="due_date"]');
+    if (!dueDateInput.value) {
+        {% if template %}
+            setDueDate({{ template.default_due_days }});
+        {% else %}
+            setDueDate(14);
+        {% endif %}
+    }
+});
+</script>
+{% endblock %}

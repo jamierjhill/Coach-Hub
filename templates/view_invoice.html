@@ -1,0 +1,412 @@
+<!-- templates/view_invoice.html -->
+{% extends "base.html" %}
+{% block title %}Invoice {{ invoice.invoice_number }}{% endblock %}
+{% block content %}
+
+<!-- Mobile Header -->
+<div class="d-md-none mb-3">
+    <div class="d-flex align-items-center mb-2">
+        <a href="{{ url_for('invoices') }}" class="btn btn-sm btn-outline-secondary me-2">
+            <i class="bi bi-arrow-left"></i>
+        </a>
+        <h4 class="mb-0 flex-grow-1">{{ invoice.invoice_number }}</h4>
+        {% if invoice.status == 'paid' %}
+            <span class="badge bg-success">Paid</span>
+        {% elif invoice.status == 'overdue' %}
+            <span class="badge bg-danger">Overdue</span>
+        {% else %}
+            <span class="badge bg-warning text-dark">Pending</span>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Desktop Header -->
+<div class="row mb-4 d-none d-md-flex">
+    <div class="col-md-8">
+        <h2 class="fw-bold"><i class="bi bi-receipt"></i> Invoice {{ invoice.invoice_number }}</h2>
+    </div>
+    <div class="col-md-4 text-end">
+        <div class="btn-group">
+            <a href="{{ url_for('edit_invoice', invoice_id=invoice.id) }}" class="btn btn-outline-primary">
+                <i class="bi bi-pencil"></i> Edit
+            </a>
+            <a href="{{ url_for('repeat_invoice', invoice_id=invoice.id) }}" class="btn btn-outline-info">
+                <i class="bi bi-arrow-repeat"></i> Repeat
+            </a>
+            {% if invoice.status != 'paid' %}
+            <form method="POST" action="{{ url_for('mark_paid', invoice_id=invoice.id) }}" 
+                  class="d-inline" onsubmit="return confirm('Mark this invoice as paid?')">
+                {{ csrf_form.hidden_tag() }}
+                <button type="submit" class="btn btn-success">
+                    <i class="bi bi-check-circle"></i> Mark Paid
+                </button>
+            </form>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Main Invoice Content -->
+    <div class="col-lg-8 mb-4">
+        <div class="card">
+            <div class="card-body">
+                <!-- Invoice Header -->
+                <div class="border-bottom pb-3 mb-4">
+                    <div class="row">
+                        <div class="col-md-6 mb-3 mb-md-0">
+                            <h3 class="text-primary mb-0">CoachPay</h3>
+                            <p class="text-muted mb-0">Invoice Management</p>
+                        </div>
+                        <div class="col-md-6 text-md-end">
+                            <h4 class="mb-2">{{ invoice.invoice_number }}</h4>
+                            <p class="mb-0">
+                                {% if invoice.status == 'paid' %}
+                                    <span class="badge bg-success fs-6">
+                                        <i class="bi bi-check-circle"></i> PAID
+                                    </span>
+                                {% elif invoice.status == 'overdue' %}
+                                    <span class="badge bg-danger fs-6">
+                                        <i class="bi bi-exclamation-triangle"></i> OVERDUE
+                                    </span>
+                                {% else %}
+                                    <span class="badge bg-warning text-dark fs-6">
+                                        <i class="bi bi-clock"></i> PENDING
+                                    </span>
+                                {% endif %}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Mobile Student & Date Info Cards -->
+                <div class="d-md-none mb-4">
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <div class="card bg-light">
+                                <div class="card-body p-3">
+                                    <h6 class="text-muted small mb-1">STUDENT</h6>
+                                    <h6 class="mb-1">{{ invoice.student_name }}</h6>
+                                    {% if invoice.student_email %}
+                                    <small class="text-muted">{{ invoice.student_email }}</small>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="card bg-light">
+                                <div class="card-body p-3">
+                                    <h6 class="text-muted small mb-1">AMOUNT</h6>
+                                    <h4 class="text-success mb-0">£{{ "%.2f"|format(invoice.amount) }}</h4>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row g-2 mt-2">
+                        <div class="col-6">
+                            <div class="card bg-light">
+                                <div class="card-body p-3">
+                                    <h6 class="text-muted small mb-1">ISSUED</h6>
+                                    <span>{{ invoice.date_issued.strftime('%d/%m/%Y') }}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="card bg-light">
+                                <div class="card-body p-3">
+                                    <h6 class="text-muted small mb-1">DUE</h6>
+                                    <span>{{ invoice.due_date.strftime('%d/%m/%Y') }}</span>
+                                    {% if invoice.paid_at %}
+                                    <br><small class="text-success">Paid {{ invoice.paid_at.strftime('%d/%m/%Y') }}</small>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Desktop Invoice Details -->
+                <div class="row mb-4 d-none d-md-flex">
+                    <div class="col-md-6">
+                        <h6 class="text-muted">BILL TO:</h6>
+                        <h5>{{ invoice.student_name }}</h5>
+                        {% if invoice.student_email %}
+                        <p class="text-muted mb-0">{{ invoice.student_email }}</p>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-6 text-end">
+                        <div class="mb-2">
+                            <strong>Issue Date:</strong> {{ invoice.date_issued.strftime('%d/%m/%Y') }}
+                        </div>
+                        <div class="mb-2">
+                            <strong>Due Date:</strong> {{ invoice.due_date.strftime('%d/%m/%Y') }}
+                        </div>
+                        {% if invoice.paid_at %}
+                        <div class="mb-2">
+                            <strong>Paid Date:</strong> {{ invoice.paid_at.strftime('%d/%m/%Y') }}
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Services Description -->
+                <div class="mb-4">
+                    <h6 class="text-muted mb-2">SERVICE DESCRIPTION:</h6>
+                    <div class="bg-light p-3 rounded">
+                        <p class="mb-0">{{ invoice.description }}</p>
+                    </div>
+                </div>
+
+                <!-- Mobile Amount Summary -->
+                <div class="d-md-none mb-4">
+                    <div class="card border-primary">
+                        <div class="card-body text-center">
+                            <h5 class="text-muted mb-1">Total Amount</h5>
+                            <h2 class="text-primary mb-0">£{{ "%.2f"|format(invoice.amount) }}</h2>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Desktop Services Table -->
+                <div class="table-responsive mb-4 d-none d-md-block">
+                    <table class="table">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Description</th>
+                                <th class="text-end">Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>{{ invoice.description }}</td>
+                                <td class="text-end">£{{ "%.2f"|format(invoice.amount) }}</td>
+                            </tr>
+                        </tbody>
+                        <tfoot>
+                            <tr class="table-light">
+                                <th>Total Amount</th>
+                                <th class="text-end">£{{ "%.2f"|format(invoice.amount) }}</th>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+
+                <!-- Payment Status Alert -->
+                {% if invoice.status == 'paid' %}
+                <div class="alert alert-success">
+                    <i class="bi bi-check-circle"></i>
+                    <strong>Payment Received</strong>
+                    {% if invoice.paid_at %}
+                        - Paid on {{ invoice.paid_at.strftime('%d/%m/%Y at %H:%M') }}
+                    {% endif %}
+                </div>
+                {% elif invoice.status == 'overdue' %}
+                <div class="alert alert-danger">
+                    <i class="bi bi-exclamation-triangle"></i>
+                    <strong>Payment Overdue</strong> - Due date was {{ invoice.due_date.strftime('%d/%m/%Y') }}
+                </div>
+                {% else %}
+                <div class="alert alert-warning">
+                    <i class="bi bi-clock"></i>
+                    <strong>Payment Pending</strong> - Due {{ invoice.due_date.strftime('%d/%m/%Y') }}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Sidebar Actions -->
+    <div class="col-lg-4">
+        <!-- Mobile Quick Actions -->
+        <div class="d-lg-none mb-3">
+            <div class="card">
+                <div class="card-body">
+                    <h6><i class="bi bi-lightning"></i> Quick Actions</h6>
+                    <div class="row g-2">
+                        {% if invoice.status != 'paid' %}
+                        <div class="col-6">
+                            <form method="POST" action="{{ url_for('mark_paid', invoice_id=invoice.id) }}" 
+                                  onsubmit="return confirm('Mark this invoice as paid?')">
+                                {{ csrf_form.hidden_tag() }}
+                                <button type="submit" class="btn btn-success w-100">
+                                    <i class="bi bi-check-circle"></i><br>
+                                    <small>Mark Paid</small>
+                                </button>
+                            </form>
+                        </div>
+                        {% endif %}
+                        <div class="col-6">
+                            <a href="{{ url_for('edit_invoice', invoice_id=invoice.id) }}" class="btn btn-outline-primary w-100">
+                                <i class="bi bi-pencil"></i><br>
+                                <small>Edit</small>
+                            </a>
+                        </div>
+                        <div class="col-6">
+                            <a href="{{ url_for('repeat_invoice', invoice_id=invoice.id) }}" class="btn btn-outline-info w-100">
+                                <i class="bi bi-arrow-repeat"></i><br>
+                                <small>Repeat</small>
+                            </a>
+                        </div>
+                        <div class="col-6">
+                            <button class="btn btn-outline-secondary w-100" onclick="shareInvoice()">
+                                <i class="bi bi-share"></i><br>
+                                <small>Share</small>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Desktop Actions -->
+        <div class="card d-none d-lg-block">
+            <div class="card-body">
+                <h5><i class="bi bi-gear"></i> Actions</h5>
+                <div class="d-grid gap-2">
+                    <a href="{{ url_for('edit_invoice', invoice_id=invoice.id) }}" class="btn btn-outline-primary">
+                        <i class="bi bi-pencil"></i> Edit Invoice
+                    </a>
+                    <a href="{{ url_for('repeat_invoice', invoice_id=invoice.id) }}" class="btn btn-outline-info">
+                        <i class="bi bi-arrow-repeat"></i> Create Similar
+                    </a>
+                    {% if invoice.status != 'paid' %}
+                    <form method="POST" action="{{ url_for('mark_paid', invoice_id=invoice.id) }}" 
+                          onsubmit="return confirm('Mark this invoice as paid?')">
+                        {{ csrf_form.hidden_tag() }}
+                        <button type="submit" class="btn btn-success w-100">
+                            <i class="bi bi-check-circle"></i> Mark as Paid
+                        </button>
+                    </form>
+                    {% endif %}
+                    <hr>
+                    <form method="POST" action="{{ url_for('delete_invoice', invoice_id=invoice.id) }}" 
+                          onsubmit="return confirm('Are you sure you want to delete this invoice? This action cannot be undone.')">
+                        {{ csrf_form.hidden_tag() }}
+                        <button type="submit" class="btn btn-outline-danger w-100">
+                            <i class="bi bi-trash"></i> Delete Invoice
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Invoice Details Card -->
+        <div class="card mt-3">
+            <div class="card-body">
+                <h6><i class="bi bi-info-circle"></i> Invoice Details</h6>
+                <table class="table table-sm table-borderless">
+                    <tr>
+                        <td class="text-muted">Created:</td>
+                        <td>{{ invoice.created_at.strftime('%d/%m/%Y') }}</td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted">Status:</td>
+                        <td>
+                            {% if invoice.status == 'paid' %}
+                                <span class="text-success">Paid</span>
+                            {% elif invoice.status == 'overdue' %}
+                                <span class="text-danger">Overdue</span>
+                            {% else %}
+                                <span class="text-warning">Pending</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% if invoice.status == 'pending' %}
+                    <tr>
+                        <td class="text-muted">Days Until Due:</td>
+                        <td>
+                            {% set days_diff = (invoice.due_date - invoice.date_issued).days %}
+                            {% if days_diff >= 0 %}
+                                {{ days_diff }} days
+                            {% else %}
+                                <span class="text-danger">{{ -days_diff }} days overdue</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endif %}
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Back Button -->
+<div class="mt-4">
+    <a href="{{ url_for('invoices') }}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i> Back to Invoices
+    </a>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+function shareInvoice() {
+    const invoiceData = {
+        title: 'Invoice {{ invoice.invoice_number }}',
+        text: 'Invoice for {{ invoice.student_name }} - £{{ "%.2f"|format(invoice.amount) }}',
+        url: window.location.href
+    };
+    
+    if (navigator.share) {
+        navigator.share(invoiceData).catch(console.error);
+    } else if (navigator.clipboard) {
+        navigator.clipboard.writeText(window.location.href).then(() => {
+            alert('Invoice link copied to clipboard!');
+        });
+    } else {
+        // Fallback for older browsers
+        const tempInput = document.createElement('input');
+        tempInput.value = window.location.href;
+        document.body.appendChild(tempInput);
+        tempInput.select();
+        document.execCommand('copy');
+        document.body.removeChild(tempInput);
+        alert('Invoice link copied to clipboard!');
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Add pull-to-refresh gesture for mobile
+    let startY = 0;
+    let pullDistance = 0;
+    const pullThreshold = 100;
+    let isPulling = false;
+    
+    document.addEventListener('touchstart', function(e) {
+        if (window.scrollY === 0) {
+            startY = e.touches[0].clientY;
+        }
+    });
+    
+    document.addEventListener('touchmove', function(e) {
+        if (window.scrollY === 0 && startY > 0) {
+            pullDistance = e.touches[0].clientY - startY;
+            
+            if (pullDistance > 10 && !isPulling) {
+                isPulling = true;
+                document.body.style.paddingTop = Math.min(pullDistance / 2, 50) + 'px';
+                document.body.style.transition = 'padding-top 0.3s ease';
+            }
+        }
+    });
+    
+    document.addEventListener('touchend', function() {
+        if (isPulling) {
+            if (pullDistance > pullThreshold) {
+                window.location.reload();
+            } else {
+                document.body.style.paddingTop = '0';
+                setTimeout(() => {
+                    document.body.style.transition = '';
+                }, 300);
+            }
+            isPulling = false;
+            pullDistance = 0;
+            startY = 0;
+        }
+    });
+});
+</script>
+{% endblock %}
